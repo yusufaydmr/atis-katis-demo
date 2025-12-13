@@ -6,18 +6,23 @@ import { initialShipments, initialVehicles, initialWasteTypes, initialCompanies 
 
 interface MockDataContextType {
   role: Role;
-  currentCompanyId: string | null; // Giriş yapmış firma ID'si
+  currentCompanyId: string | null;
   companies: Company[];
-  
-  // Rol değiştirme fonksiyonunu güncelliyoruz
   loginAs: (role: Role, companyId?: string) => void;
 
-  shipments: Shipment[]; // Bu artık FİLTRELENMİŞ liste olacak
+  shipments: Shipment[];
   vehicles: Vehicle[];
   wasteTypes: WasteType[];
   
+  // İşlem Fonksiyonları
   addShipment: (shipment: Shipment) => void;
   updateShipmentStatus: (id: string, status: ShipmentStatus) => void;
+  
+  // Master Data Yönetimi (Yeni Eklenenler)
+  addVehicle: (vehicle: Vehicle) => void;
+  removeVehicle: (id: string) => void;
+  addWasteType: (waste: WasteType) => void;
+  removeWasteType: (id: string) => void;
 }
 
 const MockDataContext = createContext<MockDataContextType | undefined>(undefined);
@@ -26,28 +31,20 @@ export const MockDataProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<Role>("admin");
   const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
   
-  const [allShipments, setAllShipments] = useState<Shipment[]>(initialShipments); // Ham veri
+  const [allShipments, setAllShipments] = useState<Shipment[]>(initialShipments);
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [wasteTypes, setWasteTypes] = useState<WasteType[]>(initialWasteTypes);
   const [companies] = useState<Company[]>(initialCompanies);
 
-  // Rol değiştirme mantığı
   const loginAs = (newRole: Role, companyId?: string) => {
     setRole(newRole);
     setCurrentCompanyId(companyId || null);
   };
 
-  // VERİ İZOLASYONU: Mevcut role göre veriyi filtrele
   const getFilteredShipments = () => {
-    if (role === "admin" || role === "security") {
-      return allShipments; // Her şeyi görür
-    }
-    if (role === "sender") {
-      return allShipments.filter(s => s.senderId === currentCompanyId); // Sadece kendi gönderdikleri
-    }
-    if (role === "receiver") {
-      return allShipments.filter(s => s.receiverId === currentCompanyId); // Sadece kendine gelenler
-    }
+    if (role === "admin" || role === "security") return allShipments;
+    if (role === "sender") return allShipments.filter(s => s.senderId === currentCompanyId);
+    if (role === "receiver") return allShipments.filter(s => s.receiverId === currentCompanyId);
     return [];
   };
 
@@ -56,9 +53,25 @@ export const MockDataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateShipmentStatus = (id: string, status: ShipmentStatus) => {
-    setAllShipments((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status } : s))
-    );
+    setAllShipments((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  };
+
+  // --- YENİ EKLENEN FONKSİYONLAR ---
+
+  const addVehicle = (vehicle: Vehicle) => {
+    setVehicles((prev) => [...prev, vehicle]);
+  };
+
+  const removeVehicle = (id: string) => {
+    setVehicles((prev) => prev.filter((v) => v.id !== id));
+  };
+
+  const addWasteType = (waste: WasteType) => {
+    setWasteTypes((prev) => [...prev, waste]);
+  };
+
+  const removeWasteType = (id: string) => {
+    setWasteTypes((prev) => prev.filter((w) => w.id !== id));
   };
 
   return (
@@ -68,11 +81,15 @@ export const MockDataProvider = ({ children }: { children: ReactNode }) => {
         currentCompanyId,
         companies,
         loginAs,
-        shipments: getFilteredShipments(), // Sayfalar bunu kullanacak
+        shipments: getFilteredShipments(),
         vehicles,
         wasteTypes,
         addShipment,
         updateShipmentStatus,
+        addVehicle,
+        removeVehicle,
+        addWasteType,
+        removeWasteType,
       }}
     >
       {children}
