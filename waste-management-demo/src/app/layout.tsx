@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { MockDataProvider } from "@/context/MockDataContext";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
-import { Toaster } from "sonner";
+import { Toaster } from "sonner"; // Bildirim bileşeni
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -32,8 +32,9 @@ export default function RootLayout({
             {children}
           </main>
           
-          {/* Bildirim Bileşeni EKLENDİ */}
-          <Toaster position="top-right" richColors />
+          {/* Bildirim Bileşeni - Güncellendi */}
+          {/* closeButton prop'u eklendi, böylece kapatma ikonu görünür olacak */}
+          <Toaster position="top-right" richColors closeButton />
         </MockDataProvider>
       </body>
     </html>
