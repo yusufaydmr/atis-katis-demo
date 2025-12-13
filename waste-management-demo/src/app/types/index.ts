@@ -1,6 +1,13 @@
+
 export type Role = 'admin' | 'sender' | 'security' | 'receiver';
 
 export type ShipmentStatus = 'CREATED' | 'SECURITY_PENDING' | 'ON_WAY' | 'DELIVERED';
+
+export interface Company {
+  id: string;
+  name: string;
+  role: Role; // Bu firmanın tipi ne? (Sadece sender veya receiver olabilir)
+}
 
 export interface Vehicle {
   id: string;
@@ -12,17 +19,19 @@ export interface Vehicle {
 export interface WasteType {
   id: string;
   name: string;
-  code: string; // Örn: 08 01 11
+  code: string;
 }
 
 export interface Shipment {
   id: string;
-  senderName: string; // Gönderici Firma Adı
-  receiverName: string; // Alıcı Firma Adı
+  senderId: string;   // Hangi firma gönderdi?
+  receiverId: string; // Kime gidiyor?
+  senderName: string; // Görüntüleme kolaylığı için (Join yapmamak adına)
+  receiverName: string;
   wasteTypeId: string;
-  amount: number; // kg/ton
+  amount: number;
   vehicleId: string;
-  documentUrl?: string; // Mock URL
+  documentUrl?: string;
   status: ShipmentStatus;
   createdAt: string;
 }
