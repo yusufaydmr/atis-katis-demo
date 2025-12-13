@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useMockData } from "@/context/MockDataContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -12,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, FileText, Truck } from "lucide-react";
 import { Shipment } from "../types";
+import { ShipmentTracker } from "@/components/ShipmentTracker";
 
 export default function SenderPage() {
   const { role, currentCompanyId, shipments, vehicles, wasteTypes, companies, addShipment } = useMockData();
@@ -159,60 +159,62 @@ export default function SenderPage() {
         </Dialog>
       </div>
 
-      {/* GEÇMİŞ GÖNDERİMLER TABLOSU */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Gönderim Listesi</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tarih</TableHead>
-                <TableHead>Alıcı Firma</TableHead>
-                <TableHead>Atık Türü</TableHead>
-                <TableHead>Plaka</TableHead>
-                <TableHead>Miktar</TableHead>
-                <TableHead>Durum</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shipments.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24">Henüz gönderim kaydı bulunmamaktadır.</TableCell>
-                </TableRow>
-              ) : (
-                shipments.map((s) => {
-                  const waste = wasteTypes.find(w => w.id === s.wasteTypeId);
-                  const vehicle = vehicles.find(v => v.id === s.vehicleId);
+      {/* GÖNDERİM LİSTESİ - KART GÖRÜNÜMÜ */}
+      <div className="grid gap-4">
+        {shipments.length === 0 ? (
+          <Card className="bg-slate-50 border-dashed">
+            <CardContent className="h-24 flex items-center justify-center text-gray-500">
+              Henüz gönderim kaydı bulunmamaktadır.
+            </CardContent>
+          </Card>
+        ) : (
+          shipments.map((s) => {
+            const waste = wasteTypes.find(w => w.id === s.wasteTypeId);
+            const vehicle = vehicles.find(v => v.id === s.vehicleId);
+            
+            return (
+              <Card key={s.id} className="overflow-hidden transition-all hover:shadow-md">
+                <CardHeader className="bg-gray-50/50 pb-4 border-b">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="text-lg text-gray-800">Sevkiyat #{s.id.toUpperCase()}</CardTitle>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {new Date(s.createdAt).toLocaleDateString('tr-TR')} - {new Date(s.createdAt).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="bg-white text-base px-3 py-1 font-normal">
+                      {s.amount} kg
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid md:grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ALICI FİRMA</span>
+                      <span className="font-medium text-gray-900">{s.receiverName}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ATIK TÜRÜ</span>
+                      <span className="font-medium text-gray-900">{waste?.code} - {waste?.name}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ARAÇ & SÜRÜCÜ</span>
+                      <span className="font-medium text-gray-900 flex items-center gap-2">
+                        <Truck className="w-4 h-4 text-gray-500"/> {vehicle?.plate}
+                      </span>
+                    </div>
+                  </div>
                   
-                  return (
-                    <TableRow key={s.id}>
-                      <TableCell>{new Date(s.createdAt).toLocaleDateString('tr-TR')}</TableCell>
-                      <TableCell>{s.receiverName}</TableCell>
-                      <TableCell>{waste?.code} ({waste?.name})</TableCell>
-                      <TableCell><div className="flex items-center gap-1"><Truck className="w-3 h-3"/> {vehicle?.plate}</div></TableCell>
-                      <TableCell>{s.amount} kg</TableCell>
-                      <TableCell>
-                         {/* Duruma göre renk değiştiren Badge */}
-                        <Badge variant={
-                          s.status === 'DELIVERED' ? 'default' : 
-                          s.status === 'ON_WAY' ? 'secondary' : 
-                          'destructive' // Security Pending için kırmızı/turuncu ton
-                        }>
-                          {s.status === 'SECURITY_PENDING' && 'Güvenlik Bekliyor'}
-                          {s.status === 'ON_WAY' && 'Yolda'}
-                          {s.status === 'DELIVERED' && 'Teslim Edildi'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                  {/* SÜREÇ TAKİP BİLEŞENİ */}
+                  <div className="mt-4 bg-slate-50/80 p-4 rounded-lg border border-slate-100">
+                    <ShipmentTracker status={s.status} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2, Plus, FileBarChart, Truck, Database } from "lucide-react";
+// İkonlar güncellendi
+import { Trash2, Plus, FileBarChart, Truck, Database, BarChart3, TrendingUp, Scale, AlertTriangle } from "lucide-react";
 import { Vehicle, WasteType } from "../types";
 
 export default function AdminPage() {
-  const { vehicles, wasteTypes, shipments, role, addVehicle, removeVehicle, addWasteType, removeWasteType } = useMockData();
+  // 'companies' buraya eklendi (Hata Çözümü #1)
+  const { vehicles, wasteTypes, shipments, role, addVehicle, removeVehicle, addWasteType, removeWasteType, companies } = useMockData();
   
   // Modal (Dialog) Kontrol State'leri
   const [isVehicleDialogOpen, setIsVehicleDialogOpen] = useState(false);
@@ -28,6 +30,14 @@ export default function AdminPage() {
     return <div className="p-10 text-center text-red-500 font-bold">Bu sayfaya erişim yetkiniz yok.</div>;
   }
 
+  // İSTATİSTİK HESAPLAMALARI
+  const totalWeight = shipments.reduce((acc, curr) => acc + curr.amount, 0);
+  const activeShipmentsCount = shipments.filter(s => s.status !== 'DELIVERED').length;
+  const hazardousWasteCount = shipments.filter(s => {
+    const w = wasteTypes.find(wt => wt.id === s.wasteTypeId);
+    return w?.code.startsWith("18") || w?.name.includes("Tehlikeli"); 
+  }).length;
+
   // Araç Ekleme İşlemi
   const handleAddVehicle = () => {
     if (newVehicle.plate && newVehicle.driverName) {
@@ -36,8 +46,8 @@ export default function AdminPage() {
         ...newVehicle
       };
       addVehicle(v);
-      setNewVehicle({ plate: "", driverName: "", driverPhone: "" }); // Formu temizle
-      setIsVehicleDialogOpen(false); // Modalı kapat
+      setNewVehicle({ plate: "", driverName: "", driverPhone: "" });
+      setIsVehicleDialogOpen(false);
     }
   };
 
@@ -68,54 +78,108 @@ export default function AdminPage() {
           <TabsTrigger value="wastetypes"><Database className="w-4 h-4 mr-2"/> Atık Kodları</TabsTrigger>
         </TabsList>
 
-        {/* --- SEKME 1: RAPORLAR (YENİ) --- */}
-        <TabsContent value="reports">
-           <Card className="border-t-4 border-t-blue-500">
-             <CardHeader>
-               <CardTitle>Genel Operasyon Raporu</CardTitle>
-               <CardDescription>Sistemdeki tüm gönderimlerin anlık durumu ve detayları.</CardDescription>
-             </CardHeader>
-             <CardContent>
-               <Table>
-                 <TableHeader>
-                   <TableRow>
-                     <TableHead>Tarih</TableHead>
-                     <TableHead>Gönderici</TableHead>
-                     <TableHead>Alıcı</TableHead>
-                     <TableHead>Plaka</TableHead>
-                     <TableHead>Atık</TableHead>
-                     <TableHead>Miktar</TableHead>
-                     <TableHead>Durum</TableHead>
-                   </TableRow>
-                 </TableHeader>
-                 <TableBody>
-                   {shipments.map((s) => {
-                     const waste = wasteTypes.find(w => w.id === s.wasteTypeId);
+        {/* --- SEKME 1: RAPORLAR (GÜNCELLENDİ) --- */}
+        <TabsContent value="reports" className="space-y-4">
+          
+          {/* ÖZET KARTLARI */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Toplam Taşıma</CardTitle>
+                <Scale className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalWeight.toLocaleString()} kg</div>
+                <p className="text-xs text-muted-foreground">Sistemdeki toplam atık hacmi</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Aktif Sevkiyat</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{activeShipmentsCount}</div>
+                <p className="text-xs text-muted-foreground">Şu an işlemde olan araçlar</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Riskli Atık</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">{hazardousWasteCount}</div>
+                <p className="text-xs text-muted-foreground">Özel işlem gerektiren</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* DETAYLI ANALİZ TABLOLARI */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            
+            {/* TABLO 1: FİRMA BAZLI ÖZET */}
+            <Card className="col-span-4">
+              <CardHeader>
+                <CardTitle>Firma Performansı</CardTitle>
+                <CardDescription>Hangi firma ne kadar atık gönderdi?</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Firma Adı</TableHead>
+                      <TableHead className="text-right">Sefer Sayısı</TableHead>
+                      <TableHead className="text-right">Toplam (kg)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Hata Çözümü #2 ve #3: 'companies' artık tanımlı olduğu için bu map çalışacak */}
+                    {companies.filter(c => c.role === 'sender').map(company => {
+                      const companyShipments = shipments.filter(s => s.senderId === company.id);
+                      const total = companyShipments.reduce((acc, s) => acc + s.amount, 0);
+                      return (
+                        <TableRow key={company.id}>
+                          <TableCell className="font-medium">{company.name}</TableCell>
+                          <TableCell className="text-right">{companyShipments.length}</TableCell>
+                          <TableCell className="text-right">{total.toLocaleString()}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* TABLO 2: SON HAREKETLER */}
+            <Card className="col-span-3">
+              <CardHeader>
+                <CardTitle>Son Hareketler</CardTitle>
+                <CardDescription>Sistemdeki son 5 işlem</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {shipments.slice(0, 5).map((s) => {
                      const vehicle = vehicles.find(v => v.id === s.vehicleId);
                      return (
-                       <TableRow key={s.id}>
-                         <TableCell className="text-xs">{new Date(s.createdAt).toLocaleDateString('tr-TR')}</TableCell>
-                         <TableCell>{s.senderName}</TableCell>
-                         <TableCell>{s.receiverName}</TableCell>
-                         <TableCell className="font-mono text-xs">{vehicle?.plate || "Silinmiş Araç"}</TableCell>
-                         <TableCell>{waste?.name || "Silinmiş Kod"}</TableCell>
-                         <TableCell>{s.amount} kg</TableCell>
-                         <TableCell>
-                            <Badge variant={
-                              s.status === 'DELIVERED' ? 'default' : 
-                              s.status === 'ON_WAY' ? 'secondary' : 
-                              'destructive'
-                            }>
-                              {s.status}
-                            </Badge>
-                         </TableCell>
-                       </TableRow>
+                       <div key={s.id} className="flex items-center gap-4 border-b pb-3 last:border-0 last:pb-0">
+                         <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">
+                            {s.senderName.substring(0,2).toUpperCase()}
+                         </div>
+                         <div className="flex-1 space-y-1 min-w-0">
+                           <p className="text-sm font-medium leading-none truncate">{s.senderName} ➔ {s.receiverName}</p>
+                           <p className="text-xs text-muted-foreground truncate">{vehicle?.plate} • {s.amount}kg</p>
+                         </div>
+                         <Badge variant="outline" className="text-xs shrink-0">{s.status}</Badge>
+                       </div>
                      )
-                   })}
-                 </TableBody>
-               </Table>
-             </CardContent>
-           </Card>
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* --- SEKME 2: ARAÇ YÖNETİMİ --- */}
@@ -127,7 +191,6 @@ export default function AdminPage() {
                 <CardDescription>Kayıtlı lisanslı araçlar.</CardDescription>
               </div>
               
-              {/* ARAÇ EKLEME MODALI */}
               <Dialog open={isVehicleDialogOpen} onOpenChange={setIsVehicleDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Yeni Araç Ekle</Button>
@@ -194,7 +257,6 @@ export default function AdminPage() {
                 <CardDescription>Yönetmelik kodları.</CardDescription>
               </div>
 
-              {/* ATIK EKLEME MODALI */}
               <Dialog open={isWasteDialogOpen} onOpenChange={setIsWasteDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Yeni Kod Ekle</Button>
