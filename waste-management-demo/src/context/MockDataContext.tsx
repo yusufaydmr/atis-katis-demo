@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { Role, Shipment, Vehicle, WasteType, ShipmentStatus, Company } from "../app/types";
 import { initialShipments, initialVehicles, initialWasteTypes, initialCompanies } from "../app/data/mockData";
+import { toast } from "sonner";
 
 interface MockDataContextType {
   role: Role;
@@ -50,28 +51,43 @@ export const MockDataProvider = ({ children }: { children: ReactNode }) => {
 
   const addShipment = (shipment: Shipment) => {
     setAllShipments((prev) => [shipment, ...prev]);
+    toast.success("Yeni atık kaydı başarıyla oluşturuldu!", {
+      description: "Güvenlik birimine bildirim gönderildi."
+    });
   };
 
   const updateShipmentStatus = (id: string, status: ShipmentStatus) => {
     setAllShipments((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
-  };
 
-  // --- YENİ EKLENEN FONKSİYONLAR ---
+    if (status === "ON_WAY") {
+      toast.info("Araç çıkışına onay verildi.", { description: "Sürücü yola çıktı." });
+    } else if (status === "DELIVERED") {
+      toast.success("Teslimat tamamlandı!", { description: "Stok kayıtları güncellendi." });
+    }
+  };
 
   const addVehicle = (vehicle: Vehicle) => {
     setVehicles((prev) => [...prev, vehicle]);
+
+    toast.success("Yeni araç sisteme eklendi.");
   };
 
   const removeVehicle = (id: string) => {
     setVehicles((prev) => prev.filter((v) => v.id !== id));
+
+    toast.error("Araç kaydı silindi.");
   };
 
   const addWasteType = (waste: WasteType) => {
     setWasteTypes((prev) => [...prev, waste]);
+
+    toast.success("Yeni atık kodu tanımlandı.");
   };
 
   const removeWasteType = (id: string) => {
     setWasteTypes((prev) => prev.filter((w) => w.id !== id));
+
+    toast.error("Atık kodu silindi.");
   };
 
   return (

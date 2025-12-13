@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { MockDataProvider } from "@/context/MockDataContext";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,6 +31,9 @@ export default function RootLayout({
           <main className="p-6 max-w-7xl mx-auto">
             {children}
           </main>
+          
+          {/* Bildirim Bileşeni EKLENDİ */}
+          <Toaster position="top-right" richColors />
         </MockDataProvider>
       </body>
     </html>
