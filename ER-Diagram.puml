@@ -138,7 +138,8 @@ entity TransferForm {
   plateNumber: varchar
   isLisenceToCarry: ENUM('Var','Yok','Muaf')
   carrierLicenseNumber: varchar 
-  relatedCarriageDocument: PDF
+  relatedCarriageDocumentFirstEdition: PDF
+  relatedCarriageDocumentFinalEdition: PDF
   securityPersonalName: varchar
   isVerifiedBySecurity: boolean
   securityVerifyDate: datetime
