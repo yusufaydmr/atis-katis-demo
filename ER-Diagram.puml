@@ -1,0 +1,208 @@
+@startuml
+hide circle
+skinparam linetype ortho
+
+' --- TEMEL AKTÖRLER ---
+entity Role {
+  + role_id : int <<PK>>
+  --
+  name : varchar
+}
+
+entity Organisation {
+  + organisation_id : int <<PK>>
+  --
+  name : varchar
+  domain : varchar
+  isActive : boolean
+}
+
+entity User {
+  + user_id : int <<PK>>
+  --
+  organisation_id : int <<FK>>
+  company_id : int <<FK>>
+  name : varchar
+  surname: varchar
+  email : varchar
+  password : varchar
+}
+
+' MANY-TO-MANY: USER <-> ROLE
+entity UserRole {
+  + user_id : int <<FK>>
+  + role_id : int <<FK>>
+  --
+  assignedAt : datetime
+}
+
+entity Company {
+  + company_id : int <<PK>>
+  --
+  name : varchar
+  legalName: varchar
+  address: varchar
+  executer: varchar
+  isRegistered: boolean
+  createdByCompanyID: int
+}
+
+entity Licences {
+  + licence_id: int <<PK>>
+  --
+  name: varchar
+  description: varchar
+  code: varchar
+}
+
+' MANY-TO-MANY: COMPANY <-> LICENCES
+entity CompanyLicense {
+  + company_id : int <<FK>>
+  + licence_id : int <<FK>>
+  --
+  validUntil : datetime
+}
+
+' --- ATIK VE BİRİM YÖNETİMİ ---
+entity WasteStateType {
+  + waste_type_id : int <<PK>>
+  --
+  stateOfMatter:  ENUM('katı','sıvı','gaz')
+}
+
+entity Unit {
+  + unit_id : int <<PK>>
+  --
+  name : varchar
+  symbol: varchar
+  baseUnit: decimal
+  wasteStateTypeID: int <<FK>>
+}
+
+entity Waste{
+  + waste_id: int<<PK>>
+  --
+  name: varchar
+  description: varchar
+  wasteStateTypeID: int <<FK>>
+  unitID: int <<FK>>
+  wasteType: varchar
+  containerType: varchar
+  otherFeatures: varchar[]
+  otherCodes: varchar[]
+  senderCompanyID: int <<FK>>
+  receiverCompanyID: int <<FK>>
+  isDangerous: boolean
+  amount: decimal
+}
+
+entity WasteFeatures {
+  + waste_feature_id : int <<PK>>
+  --
+  name : varchar
+}
+
+' MANY-TO-MANY: WASTE <-> FEATURES
+entity WasteFeatureMap {
+  + waste_id : int <<FK>>
+  + waste_feature_id : int <<FK>>
+}
+
+entity WasteCodes {
+  + waste_code_id : int <<PK>>
+  --
+  name : varchar
+  code: varchar
+}
+
+' MANY-TO-MANY: WASTE <-> CODES
+entity WasteCodeMap {
+  + waste_id : int <<FK>>
+  + waste_code_id : int <<FK>>
+}
+
+' --- FORM TÜRÜ 1: TAŞIMA FORMU ---
+entity TransferForm {
+  + transfer_form_id : int <<PK>>
+  --
+  formNumber: varchar
+  wasteID: int <<FK>>
+  senderCompanyID: int <<FK>>
+  receiverCompanyID: int <<FK>>
+  --
+  createdAt: datetime
+  leavingDate: datetime
+  enteredGateName: ENUM('A','B')
+  carrierOfficialName: varchar  
+  driverName: varchar           
+  plateNumber: varchar
+  isLisenceToCarry: ENUM('Var','Yok','Muaf')
+  carrierLicenseNumber: varchar 
+  relatedCarriageDocument: PDF
+  securityPersonalName: varchar
+  isVerifiedBySecurity: boolean
+  securityVerifyDate: datetime
+  isVerifiedBySender: boolean
+  isVerifiedByReceiver: boolean
+  isVerifiedByManagement: boolean
+  managementVerifyDate: datetime
+}
+
+' --- FORM TÜRÜ 2: HİZMET FORMU ---
+entity ServiceForm {
+  + service_form_id : int <<PK>>
+  --
+  requesterCompanyID: int <<FK>>
+  --
+  formNumber: varchar
+  createdAt: datetime
+  entranceSecurityPersonalName: varchar
+  didEntranceVerifiedBySecurity: boolean
+  entranceSecurityVerifyDate: datetime
+  entranceDate: datetime
+  enteredGateName: ENUM('A','B')
+  exitSecurityPersonalName: varchar
+  didExitVerifiedBySecurity: boolean
+  exitSecurityVerifyDate: datetime
+  exitDate: datetime
+  exitedGateName: ENUM('A','B')
+  providerOfficialName: varchar
+  workDescription: varchar      
+  equipmentType: varchar        
+  driverName: varchar         
+  plateNumber: varchar
+  startTime: datetime
+  endTime: datetime
+  totalHours: decimal           
+  isVerifiedByManagement: boolean
+  managementVerifyDate: datetime
+}
+
+' --- İLİŞKİLER ---
+
+' User & Org & Roles
+Organisation ||..|{ User : "has members"
+User ||..|{ UserRole : "assigned"
+Role ||..|{ UserRole : "defined in"
+
+' Company & License
+Company ||..|{ CompanyLicense : "holds"
+Licences ||..|{ CompanyLicense : "granted to"
+User }|..|| Company : "represents"
+
+' Waste Relations
+WasteStateType ||..|{ Unit : "defines"
+Waste }|..|| Unit : "measured in"
+Waste }|..|| WasteStateType : "has state"
+Waste ||..|{ WasteFeatureMap : "has"
+WasteFeatures ||..|{ WasteFeatureMap : "assigned to"
+Waste ||..|{ WasteCodeMap : "has"
+WasteCodes ||..|{ WasteCodeMap : "assigned to"
+
+' Form Relations
+TransferForm }|..|| Waste : "transports"
+Company ||..|{ TransferForm : "sender/receiver"
+Company ||..|{ ServiceForm : "requester"
+Company ||..|{ Waste : "sender/receiver"
+
+@enduml
