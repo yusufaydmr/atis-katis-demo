@@ -1,220 +1,437 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useMockData } from "@/context/MockDataContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, FileText, Truck } from "lucide-react";
-import { Shipment } from "../types";
-import { ShipmentTracker } from "@/components/ShipmentTracker";
+import { useState } from "react"
+import { useMockData } from "@/context/MockDataContext"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Plus, Truck, FileText } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Shipment } from "@/app/types"
+
+// --- EXCEL HÜCRE BİLEŞENİ ---
+const ExcelCell = ({ 
+  label, 
+  children, 
+  className 
+}: { 
+  label: string; 
+  children: React.ReactNode; 
+  className?: string 
+}) => (
+  <div className={cn("flex flex-col px-3 py-2 border-r border-gray-200 last:border-r-0 h-full justify-center bg-white", className)}>
+    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+      {label}
+    </label>
+    <div className="flex-1 flex items-center">
+      {children}
+    </div>
+  </div>
+)
 
 export default function SenderPage() {
-  const { role, currentCompanyId, shipments, vehicles, wasteTypes, companies, addShipment } = useMockData();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
+  const { shipments, addShipment, companies, wasteTypes, vehicles, currentCompanyId } = useMockData()
+  const [isNewShipmentOpen, setIsNewShipmentOpen] = useState(false)
+  
   // Form State
-  const [formData, setFormData] = useState({
-    wasteTypeId: "",
-    vehicleId: "",
+  const [newShipment, setNewShipment] = useState({
     receiverId: "",
+    transporterId: "", 
+    vehiclePlate: "",
+    driverName: "",
+    wasteCode: "",
     amount: "",
-  });
+    plannedDate: new Date().toISOString().split('T')[0],
+  })
 
-  // Sadece Sender rolü girebilir
-  if (role !== "sender") {
-    return <div className="p-10 text-center text-red-500 font-bold">Bu sayfaya sadece Gönderici Firmalar erişebilir.</div>;
-  }
+  // Seçilen atık koduna göre tanımı bulma
+  const selectedWaste = wasteTypes.find(w => w.code === newShipment.wasteCode)
 
-  // Alıcı firmaları filtrele (Dropdown için)
-  const receivers = companies.filter(c => c.role === "receiver");
+  const handleCreateShipment = () => {
+    if (!newShipment.receiverId || !newShipment.wasteCode || !newShipment.amount) return
 
-  // Yeni Kayıt Ekleme Fonksiyonu
-  const handleSubmit = () => {
-    if (!formData.wasteTypeId || !formData.vehicleId || !formData.receiverId || !formData.amount) {
-      alert("Lütfen tüm alanları doldurunuz.");
-      return;
+    // Plakadan araç ID'sini bul
+    const matchedVehicle = vehicles.find(v => v.plate === newShipment.vehiclePlate)
+    const vehicleIdToUse = matchedVehicle ? matchedVehicle.id : (vehicles[0]?.id || "v1")
+    
+    // Atık ID'sini bul
+    const wasteTypeIdToUse = selectedWaste ? selectedWaste.id : (wasteTypes[0]?.id || "w1")
+
+    const shipmentData: Shipment = {
+      id: Math.random().toString(36).substr(2, 9),
+      senderId: currentCompanyId || "1",
+      receiverId: newShipment.receiverId,
+      senderName: companies.find(c => c.id === (currentCompanyId || "1"))?.name || "Gönderen",
+      receiverName: companies.find(c => c.id === newShipment.receiverId)?.name || "Alıcı",
+      wasteTypeId: wasteTypeIdToUse,
+      amount: Number(newShipment.amount),
+      vehicleId: vehicleIdToUse,
+      status: "CREATED",
+      createdAt: new Date(newShipment.plannedDate).toISOString(),
     }
 
-    const selectedReceiver = receivers.find(r => r.id === formData.receiverId);
-    const selectedCompany = companies.find(c => c.id === currentCompanyId);
+    addShipment(shipmentData)
+    setIsNewShipmentOpen(false)
+    
+    // Formu sıfırla
+    setNewShipment({
+      receiverId: "",
+      transporterId: "",
+      vehiclePlate: "",
+      driverName: "",
+      wasteCode: "",
+      amount: "",
+      plannedDate: new Date().toISOString().split('T')[0],
+    })
+  }
 
-    const newShipment: Shipment = {
-      id: Math.random().toString(36).substr(2, 9), // Rastgele ID
-      senderId: currentCompanyId || "",
-      receiverId: formData.receiverId,
-      senderName: selectedCompany?.name || "Bilinmeyen Gönderici",
-      receiverName: selectedReceiver?.name || "Bilinmeyen Alıcı",
-      wasteTypeId: formData.wasteTypeId,
-      vehicleId: formData.vehicleId,
-      amount: Number(formData.amount),
-      status: "SECURITY_PENDING", // İlk statü: Güvenlik Bekliyor
-      createdAt: new Date().toISOString(),
-      documentUrl: "/mock-docs/tasima-belgesi.pdf", // Mock belge linki
-    };
-
-    addShipment(newShipment);
-    setIsDialogOpen(false); // Modalı kapat
-    setFormData({ wasteTypeId: "", vehicleId: "", receiverId: "", amount: "" }); // Formu temizle
-  };
+  // Yardımcı fonksiyonlar
+  const getCompanyName = (id: string) => companies.find(c => c.id === id)?.name || id
+  const getWasteCodeById = (id: string) => wasteTypes.find(w => w.id === id)?.code || id
+  
+  const formatDate = (dateString: string) => {
+    try {
+        const d = new Date(dateString)
+        return new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).format(d)
+    } catch (e) {
+        return dateString
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Atık Gönderim Paneli</h2>
-          <p className="text-gray-500">Geçmiş gönderimleriniz ve yeni talep oluşturma.</p>
-        </div>
-
-        {/* YENİ GÖNDERİM MODALI (DIALOG) */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700">
-              <Plus className="mr-2 h-4 w-4" /> Yeni Atık Çıkışı
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Yeni Atık Taşıma Formu</DialogTitle>
-              <DialogDescription>
-                Lütfen atık, araç ve alıcı bilgilerini eksiksiz giriniz.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              
-              {/* Alıcı Seçimi */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="receiver" className="text-right">Alıcı</Label>
-                <Select onValueChange={(val) => setFormData({...formData, receiverId: val})}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Alıcı Firma Seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {receivers.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Atık Tipi */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="waste" className="text-right">Atık Tipi</Label>
-                <Select onValueChange={(val) => setFormData({...formData, wasteTypeId: val})}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Atık Türü Seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {wasteTypes.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>{w.code} - {w.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Araç Seçimi */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="vehicle" className="text-right">Araç</Label>
-                <Select onValueChange={(val) => setFormData({...formData, vehicleId: val})}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Plaka Seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vehicles.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>{v.plate} ({v.driverName})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Miktar */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">Miktar (kg)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  className="col-span-3"
-                  placeholder="Örn: 500"
-                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                />
-              </div>
-
-              {/* Dosya Yükleme (Görsel) */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="file" className="text-right">Belge</Label>
-                <div className="col-span-3 border-2 border-dashed rounded-md p-4 text-center text-sm text-gray-500 cursor-pointer hover:bg-gray-50">
-                  <FileText className="mx-auto h-6 w-6 mb-1" />
-                  Taşıma Belgesi Yükle
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" onClick={handleSubmit}>Kaydı Oluştur</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* İstatistikler */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Toplam Gönderim</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{shipments.filter(s => s.senderId === currentCompanyId).length}</div>
+            <p className="text-xs text-muted-foreground">Son 30 günde +12% artış</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Bekleyen Onaylar</CardTitle>
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">İşlemde</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{shipments.filter(s => s.senderId === currentCompanyId && s.status === "SECURITY_PENDING").length}</div>
+            <p className="text-xs text-muted-foreground">Güvenlik onayı bekleniyor</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Yoldaki Araçlar</CardTitle>
+            <Truck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{shipments.filter(s => s.senderId === currentCompanyId && s.status === "ON_WAY").length}</div>
+            <p className="text-xs text-muted-foreground">Tahmini varış: 2 saat</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* GÖNDERİM LİSTESİ - KART GÖRÜNÜMÜ */}
-      <div className="grid gap-4">
-        {shipments.length === 0 ? (
-          <Card className="bg-slate-50 border-dashed">
-            <CardContent className="h-24 flex items-center justify-center text-gray-500">
-              Henüz gönderim kaydı bulunmamaktadır.
-            </CardContent>
-          </Card>
-        ) : (
-          shipments.map((s) => {
-            const waste = wasteTypes.find(w => w.id === s.wasteTypeId);
-            const vehicle = vehicles.find(v => v.id === s.vehicleId);
+      {/* Liste ve Buton */}
+      <Card className="border-t-4 border-t-blue-600">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Atık Gönderim Listesi</CardTitle>
+            <p className="text-sm text-gray-500 mt-1">Tesisinizden çıkan tüm atık transferlerini buradan yönetin.</p>
+          </div>
+          
+          <Dialog open={isNewShipmentOpen} onOpenChange={setIsNewShipmentOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="mr-2 h-4 w-4" /> Yeni Atık Çıkışı
+              </Button>
+            </DialogTrigger>
             
-            return (
-              <Card key={s.id} className="overflow-hidden transition-all hover:shadow-md">
-                <CardHeader className="bg-gray-50/50 pb-4 border-b">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle className="text-lg text-gray-800">Sevkiyat #{s.id.toUpperCase()}</CardTitle>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {new Date(s.createdAt).toLocaleDateString('tr-TR')} - {new Date(s.createdAt).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="bg-white text-base px-3 py-1 font-normal">
-                      {s.amount} kg
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="grid md:grid-cols-3 gap-6 mb-6">
-                    <div>
-                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ALICI FİRMA</span>
-                      <span className="font-medium text-gray-900">{s.receiverName}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ATIK TÜRÜ</span>
-                      <span className="font-medium text-gray-900">{waste?.code} - {waste?.name}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ARAÇ & SÜRÜCÜ</span>
-                      <span className="font-medium text-gray-900 flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-gray-500"/> {vehicle?.plate}
-                      </span>
-                    </div>
-                  </div>
+            {/* Modal İçeriği */}
+            <DialogContent className="sm:max-w-[90vw] p-0 gap-0 overflow-hidden bg-gray-50">
+              
+              <DialogHeader className="px-6 py-4 bg-white border-b border-gray-200">
+                <DialogTitle className="flex items-center gap-2 text-xl text-blue-900">
+                  <FileText className="h-5 w-5" />
+                  Yeni Atık Transfer Formu (U-ATOF)
+                </DialogTitle>
+                <p className="text-sm text-gray-500">Ulusal Atık Taşıma Formu standartlarına uygun çıkış kaydı.</p>
+              </DialogHeader>
+
+              <div className="p-6">
+                <div className="bg-white border border-gray-300 rounded-sm shadow-sm overflow-hidden">
                   
-                  {/* SÜREÇ TAKİP BİLEŞENİ */}
-                  <div className="mt-4 bg-slate-50/80 p-4 rounded-lg border border-slate-100">
-                    <ShipmentTracker status={s.status} />
+                  {/* BÖLÜM A */}
+                  <div className="grid grid-cols-3 border-b border-gray-300">
+                    <ExcelCell label="GÖNDEREN FİRMA (SİZ)">
+                      <div className="text-sm font-medium text-gray-900 pl-1">
+                        {companies.find(c => c.id === currentCompanyId)?.name || "Firma Seçilmedi"}
+                      </div>
+                    </ExcelCell>
+
+                    <ExcelCell label="TAŞIYICI FİRMA">
+                      <Select 
+                        value={newShipment.transporterId} 
+                        onValueChange={(val) => setNewShipment(s => ({ ...s, transporterId: val }))}
+                      >
+                        <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm font-medium text-blue-700 bg-transparent">
+                          <SelectValue placeholder="Seçiniz..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {companies.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </ExcelCell>
+
+                    <ExcelCell label="ALICI FİRMA">
+                      <Select 
+                        value={newShipment.receiverId} 
+                        onValueChange={(val) => setNewShipment(s => ({ ...s, receiverId: val }))}
+                      >
+                        <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm font-medium text-blue-700 bg-transparent">
+                          <SelectValue placeholder="Seçiniz..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {companies.filter(c => c.role === "receiver").map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </ExcelCell>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
+
+                  {/* BÖLÜM B */}
+                  <div className="grid grid-cols-4 border-b border-gray-300">
+                    <ExcelCell label="PLANLANAN SEFER TARİHİ">
+                      <Input 
+                        type="date"
+                        value={newShipment.plannedDate}
+                        onChange={(e) => setNewShipment(s => ({ ...s, plannedDate: e.target.value }))}
+                        className="border-0 shadow-none focus-visible:ring-0 px-0 h-auto text-gray-900 bg-transparent w-full font-medium"
+                      />
+                    </ExcelCell>
+
+                    <ExcelCell label="ARAÇ PLAKASI">
+                      {/* DÜZELTME: Dropdown (Select) olarak değiştirildi */}
+                      <Select 
+                        value={newShipment.vehiclePlate}
+                        onValueChange={(val) => {
+                          // Aracı bul ve sürücüsünü de otomatik doldur
+                          const vehicle = vehicles.find(v => v.plate === val)
+                          setNewShipment(s => ({ 
+                            ...s, 
+                            vehiclePlate: val,
+                            driverName: vehicle?.driverName || s.driverName 
+                          }))
+                        }}
+                      >
+                        <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto font-mono font-bold text-gray-900 bg-transparent">
+                          <SelectValue placeholder="Araç Seçiniz" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vehicles.map(v => (
+                            <SelectItem key={v.id} value={v.plate}>{v.plate}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </ExcelCell>
+
+                    <ExcelCell label="SÜRÜCÜ ADI SOYADI">
+                      <Input 
+                        placeholder="İsim Giriniz" 
+                        value={newShipment.driverName}
+                        onChange={(e) => setNewShipment(s => ({ ...s, driverName: e.target.value }))}
+                        className="border-0 shadow-none focus-visible:ring-0 px-0 h-auto text-gray-900 placeholder:text-gray-300"
+                      />
+                    </ExcelCell>
+
+                    <ExcelCell label="SEFER TÜRÜ">
+                       <span className="text-gray-400 text-sm italic">Tek Yön / Standart</span>
+                    </ExcelCell>
+                  </div>
+
+                  {/* BÖLÜM C */}
+                  <div className="flex w-full border-b border-gray-300 min-h-[70px]">
+                    
+                    <div className="w-[12%]">
+                      <ExcelCell label="ATIK KODU">
+                        <Select 
+                          value={newShipment.wasteCode} 
+                          onValueChange={(val) => setNewShipment(s => ({ ...s, wasteCode: val }))}
+                        >
+                          <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto font-mono font-bold text-gray-900 bg-transparent">
+                            <SelectValue placeholder="------" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {wasteTypes.map((w: any) => (
+                              <SelectItem key={w.code} value={w.code}>{w.code}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </ExcelCell>
+                    </div>
+
+                    <div className="w-[33%]">
+                      <ExcelCell label="ATIK TANIMI">
+                        <div className="text-sm text-gray-700 py-1">
+                          {selectedWaste ? selectedWaste.name : "Atık kodu seçildiğinde otomatik gelir..."}
+                        </div>
+                      </ExcelCell>
+                    </div>
+
+                    <div className="w-[17%]">
+                      <ExcelCell label="MİKTAR (NET)">
+                        <Input 
+                          type="number"
+                          placeholder="0.00" 
+                          value={newShipment.amount}
+                          onChange={(e) => setNewShipment(s => ({ ...s, amount: e.target.value }))}
+                          className="border-0 shadow-none focus-visible:ring-0 px-0 h-auto text-right font-bold text-lg text-gray-900 placeholder:text-gray-200"
+                        />
+                      </ExcelCell>
+                    </div>
+
+                    <div className="w-[10%]">
+                      <ExcelCell label="BİRİM">
+                         <span className="text-sm font-medium text-gray-900">KG</span>
+                      </ExcelCell>
+                    </div>
+
+                    <div className="w-[13%]">
+                      <ExcelCell label="AMBALAJ TÜRÜ">
+                         <Select defaultValue="dokme">
+                            <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm text-gray-900 bg-transparent">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="dokme">Dökme</SelectItem>
+                              <SelectItem value="ibc">IBC Tank</SelectItem>
+                              <SelectItem value="varil">Varil</SelectItem>
+                            </SelectContent>
+                         </Select>
+                      </ExcelCell>
+                    </div>
+
+                    <div className="flex-1">
+                      <ExcelCell label="H KODU">
+                         <Select defaultValue="h3a">
+                            <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm text-gray-900 bg-transparent">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="h3a">H3-A</SelectItem>
+                              <SelectItem value="h5">H5</SelectItem>
+                            </SelectContent>
+                         </Select>
+                      </ExcelCell>
+                    </div>
+
+                  </div>
+                </div>
+                
+                <div className="mt-4 flex items-start gap-2 text-xs text-gray-500">
+                    <div className="w-4 h-4 mt-0.5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">i</div>
+                    <p>Bu form MoTAT (Mobil Tehlikeli Atık Takip) sistemi ile entegre çalışır. Kaydet butonuna bastığınızda alıcı ve taşıyıcı firmaya otomatik bildirim gönderilecektir.</p>
+                </div>
+
+              </div>
+
+              <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-200 sm:justify-between">
+                <Button variant="outline" onClick={() => setIsNewShipmentOpen(false)} className="border-gray-300 text-gray-700">
+                  Vazgeç
+                </Button>
+                <div className="flex gap-2">
+                    <Button variant="secondary" className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">
+                        Taslak Olarak Kaydet
+                    </Button>
+                    <Button onClick={handleCreateShipment} className="bg-blue-600 hover:bg-blue-700 px-8">
+                        Transferi Başlat
+                    </Button>
+                </div>
+              </DialogFooter>
+            </DialogContent>
+
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tarih</TableHead>
+                  <TableHead>Alıcı Firma</TableHead>
+                  <TableHead>Atık Kodu</TableHead>
+                  <TableHead className="text-right">Miktar (kg)</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead>Araç Bilgisi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shipments.filter(s => s.senderId === currentCompanyId).map((shipment) => (
+                  <TableRow key={shipment.id}>
+                    <TableCell>{formatDate(shipment.createdAt)}</TableCell>
+                    <TableCell className="font-medium">{getCompanyName(shipment.receiverId)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono">
+                        {getWasteCodeById(shipment.wasteTypeId)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{shipment.amount.toLocaleString("tr-TR")}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={
+                          shipment.status === "DELIVERED" ? "default" : 
+                          shipment.status === "ON_WAY" ? "secondary" : "outline"
+                        }
+                        className={
+                          shipment.status === "DELIVERED" ? "bg-green-600 hover:bg-green-700" :
+                          shipment.status === "ON_WAY" ? "bg-blue-100 text-blue-800 hover:bg-blue-200" :
+                          "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200"
+                        }
+                      >
+                         {shipment.status === "DELIVERED" ? "Teslim Edildi" :
+                         shipment.status === "ON_WAY" ? "Yolda" :
+                         shipment.status === "SECURITY_PENDING" ? "Güvenlik Onayı" : "Oluşturuldu"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {vehicles.find(v => v.id === shipment.vehicleId)?.plate || "-"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
