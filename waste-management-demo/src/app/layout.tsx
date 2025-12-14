@@ -23,7 +23,7 @@ export default function RootLayout({
         <MockDataProvider>
           {/* Üst Navbar */}
           <nav className="border-b bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-            <h1 className="text-xl font-bold text-green-700">♻️ EcoLogistics</h1>
+            <h1 className="text-xl font-bold text-green-700">♻️ Atık Yönetim Sistemi</h1>
             <RoleSwitcher />
           </nav>
 

@@ -2,219 +2,415 @@
 
 import { useState } from "react";
 import { useMockData } from "@/context/MockDataContext";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, FileText, Truck } from "lucide-react";
-import { Shipment } from "../types";
-import { ShipmentTracker } from "@/components/ShipmentTracker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Plus, FileText, Truck, Building2, User } from "lucide-react";
 
 export default function SenderPage() {
-  const { role, currentCompanyId, shipments, vehicles, wasteTypes, companies, addShipment } = useMockData();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { shipments, addShipment } = useMockData();
+  const [isNewOpen, setIsNewOpen] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
-    wasteTypeId: "",
-    vehicleId: "",
-    receiverId: "",
+    receiverName: "",
+    carrierName: "",
+    plateNumber: "",
+    driverName: "",
+    driverId: "", 
+    wasteCode: "",
+    wasteDescription: "",
     amount: "",
+    unit: "kg",
+    physicalState: "Kati",
+    packagingType: "Dokme",
+    hazardCode: "",
   });
 
-  // Sadece Sender rolü girebilir
-  if (role !== "sender") {
-    return <div className="p-10 text-center text-red-500 font-bold">Bu sayfaya sadece Gönderici Firmalar erişebilir.</div>;
-  }
-
-  // Alıcı firmaları filtrele (Dropdown için)
-  const receivers = companies.filter(c => c.role === "receiver");
-
-  // Yeni Kayıt Ekleme Fonksiyonu
-  const handleSubmit = () => {
-    if (!formData.wasteTypeId || !formData.vehicleId || !formData.receiverId || !formData.amount) {
-      alert("Lütfen tüm alanları doldurunuz.");
-      return;
-    }
-
-    const selectedReceiver = receivers.find(r => r.id === formData.receiverId);
-    const selectedCompany = companies.find(c => c.id === currentCompanyId);
-
-    const newShipment: Shipment = {
-      id: Math.random().toString(36).substr(2, 9), // Rastgele ID
-      senderId: currentCompanyId || "",
-      receiverId: formData.receiverId,
-      senderName: selectedCompany?.name || "Bilinmeyen Gönderici",
-      receiverName: selectedReceiver?.name || "Bilinmeyen Alıcı",
-      wasteTypeId: formData.wasteTypeId,
-      vehicleId: formData.vehicleId,
-      amount: Number(formData.amount),
-      status: "SECURITY_PENDING", // İlk statü: Güvenlik Bekliyor
-      createdAt: new Date().toISOString(),
-      documentUrl: "/mock-docs/tasima-belgesi.pdf", // Mock belge linki
-    };
-
-    addShipment(newShipment);
-    setIsDialogOpen(false); // Modalı kapat
-    setFormData({ wasteTypeId: "", vehicleId: "", receiverId: "", amount: "" }); // Formu temizle
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Otomatik alanları oluştur
+    const newId = Math.random().toString(36).substring(2, 9);
+    const newCode = `UATF-${Math.floor(100000 + Math.random() * 900000)}`;
+    const now = new Date().toISOString();
+
+    addShipment({
+      id: newId,
+      code: newCode,
+      createdAt: now,
+      updatedAt: now,
+      senderId: "current-user",
+      senderName: "Merkez Fabrika A.Ş.",
+      receiverId: "rx-1",
+      receiverName: formData.receiverName,
+      carrierName: formData.carrierName,
+      plateNumber: formData.plateNumber,
+      driverName: formData.driverName,
+      driverId: formData.driverId,
+      wasteCode: formData.wasteCode,
+      wasteDescription: formData.wasteDescription,
+      amount: Number(formData.amount),
+      unit: formData.unit as "kg" | "ton",
+      physicalState: formData.physicalState,
+      packagingType: formData.packagingType,
+      hazardCode: formData.hazardCode,
+      status: "olusturuldu",
+    });
+    setIsNewOpen(false);
+    setFormData({
+      receiverName: "",
+      carrierName: "",
+      plateNumber: "",
+      driverName: "",
+      driverId: "",
+      wasteCode: "",
+      wasteDescription: "",
+      amount: "",
+      unit: "kg",
+      physicalState: "Kati",
+      packagingType: "Dokme",
+      hazardCode: "",
+    });
+  };
+
+  // Excel Hücresi - Compact Tasarım
+  const ExcelCell = ({ 
+    label, 
+    children, 
+    className = "", 
+    contentClass="",
+    required = false
+  }: { 
+    label?: string, 
+    children: React.ReactNode, 
+    className?: string, 
+    contentClass?: string,
+    required?: boolean
+  }) => (
+    <div className={`bg-white flex flex-col justify-center px-3 py-1.5 border-r border-b border-gray-300 last:border-r-0 ${className}`}>
+      {label && (
+        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+      <div className={`flex items-center ${contentClass}`}>
+        {children}
+      </div>
+    </div>
+  );
+
+  // Input stilleri - Compact & Clean
+  const inputClass = "border-0 focus-visible:ring-0 px-0 h-7 w-full bg-transparent text-sm placeholder:text-gray-300 text-gray-900 font-medium";
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Atık Gönderim Paneli</h2>
-          <p className="text-gray-500">Geçmiş gönderimleriniz ve yeni talep oluşturma.</p>
-        </div>
-
-        {/* YENİ GÖNDERİM MODALI (DIALOG) */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <h1 className="text-3xl font-bold tracking-tight">Giden Atık Yönetimi</h1>
+        <Dialog open={isNewOpen} onOpenChange={setIsNewOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700">
-              <Plus className="mr-2 h-4 w-4" /> Yeni Atık Çıkışı
+            <Button className="bg-green-600 hover:bg-green-700 size-lg text-md px-6">
+              <Plus className="mr-2 h-5 w-5" /> Yeni Taşıma Formu (UATF)
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Yeni Atık Taşıma Formu</DialogTitle>
-              <DialogDescription>
-                Lütfen atık, araç ve alıcı bilgilerini eksiksiz giriniz.
-              </DialogDescription>
+          
+          {/* GÜNCELLEME BURADA YAPILDI:
+            sm:max-w-[90vw] -> Küçük ekran ve üzeri tüm ekranlarda genişliği %90 yap.
+            Böylece varsayılan dar kutu (max-w-lg) iptal edilmiş olur.
+          */}
+          <DialogContent className="sm:max-w-[90vw] w-full p-0 overflow-hidden gap-0 bg-gray-100 shadow-2xl border border-gray-400">
+            
+            <DialogHeader className="px-4 py-3 bg-white border-b border-gray-300 flex flex-row items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-lg text-gray-800">
+                 <FileText className="h-5 w-5 text-blue-600" />
+                 ULUSAL ATIK TAŞIMA FORMU OLUŞTUR
+              </DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            
+            <form onSubmit={handleSubmit} className="p-4 bg-gray-200">
               
-              {/* Alıcı Seçimi */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="receiver" className="text-right">Alıcı</Label>
-                <Select onValueChange={(val) => setFormData({...formData, receiverId: val})}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Alıcı Firma Seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {receivers.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* ANA ÇERÇEVE */}
+              <div className="border border-gray-400 bg-white shadow-sm">
+                
+                {/* ÜST KISIM: A ve B Blokları (Yan Yana) */}
+                <div className="flex w-full border-b border-gray-400">
+                  
+                  {/* --- BÖLÜM A: ÜRETİCİ & ALICI (%50 Genişlik) --- */}
+                  <div className="w-1/2 border-r border-gray-400 flex flex-col">
+                    <div className="bg-blue-50 px-3 py-1.5 border-b border-gray-300">
+                      <span className="text-xs font-bold text-blue-900">A - ÜRETİCİ & ALICI BİLGİLERİ</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2">
+                       <ExcelCell label="Üretici Firma (Gönderen)" className="col-span-2">
+                        <Input value="Merkez Fabrika A.Ş. (34-001)" disabled className={`${inputClass} text-gray-500`} />
+                      </ExcelCell>
+                      
+                      <ExcelCell label="Alıcı Firma (Tesis)" required>
+                        <Input 
+                          name="receiverName" 
+                          placeholder="Firma Adı" 
+                          value={formData.receiverName} 
+                          onChange={handleInputChange} 
+                          className={inputClass} 
+                        />
+                      </ExcelCell>
+                      
+                      <ExcelCell label="Tesis Kodu">
+                        <Input placeholder="Kod Giriniz" className={inputClass} />
+                      </ExcelCell>
+                    </div>
+                  </div>
 
-              {/* Atık Tipi */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="waste" className="text-right">Atık Tipi</Label>
-                <Select onValueChange={(val) => setFormData({...formData, wasteTypeId: val})}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Atık Türü Seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {wasteTypes.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>{w.code} - {w.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* --- BÖLÜM B: TAŞIYICI (%50 Genişlik) --- */}
+                  <div className="w-1/2 flex flex-col">
+                    <div className="bg-orange-50 px-3 py-1.5 border-b border-gray-300">
+                      <span className="text-xs font-bold text-orange-900">B - TAŞIYICI FİRMA BİLGİLERİ</span>
+                    </div>
 
-              {/* Araç Seçimi */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="vehicle" className="text-right">Araç</Label>
-                <Select onValueChange={(val) => setFormData({...formData, vehicleId: val})}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Plaka Seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vehicles.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>{v.plate} ({v.driverName})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    <div className="grid grid-cols-3">
+                       <ExcelCell label="Taşıyıcı Firma Ünvanı" className="col-span-3" required>
+                        <Input 
+                          name="carrierName"
+                          placeholder="Lojistik Firması"
+                          value={formData.carrierName}
+                          onChange={handleInputChange}
+                          className={inputClass}
+                        />
+                      </ExcelCell>
 
-              {/* Miktar */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">Miktar (kg)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  className="col-span-3"
-                  placeholder="Örn: 500"
-                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                />
-              </div>
+                      <ExcelCell label="Plaka" required>
+                        <Input 
+                          name="plateNumber"
+                          placeholder="34 XX 000"
+                          value={formData.plateNumber}
+                          onChange={handleInputChange}
+                          className={`${inputClass} font-mono font-bold uppercase`}
+                        />
+                      </ExcelCell>
 
-              {/* Dosya Yükleme (Görsel) */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="file" className="text-right">Belge</Label>
-                <div className="col-span-3 border-2 border-dashed rounded-md p-4 text-center text-sm text-gray-500 cursor-pointer hover:bg-gray-50">
-                  <FileText className="mx-auto h-6 w-6 mb-1" />
-                  Taşıma Belgesi Yükle
+                      <ExcelCell label="Sürücü Adı" required>
+                        <Input 
+                          name="driverName"
+                          placeholder="Ad Soyad"
+                          value={formData.driverName}
+                          onChange={handleInputChange}
+                          className={inputClass}
+                        />
+                      </ExcelCell>
+
+                       <ExcelCell label="Sürücü TC">
+                        <Input 
+                          name="driverId"
+                          placeholder="11 Haneli No"
+                          maxLength={11}
+                          value={formData.driverId}
+                          onChange={handleInputChange}
+                          className={`${inputClass} font-mono`}
+                        />
+                      </ExcelCell>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- BÖLÜM C: ATIK BİLGİLERİ (Tam Genişlik - FLEX YAPISI) --- */}
+                <div className="w-full">
+                   <div className="bg-green-50 px-3 py-1.5 border-b border-gray-300">
+                    <span className="text-xs font-bold text-green-900">C - ATIK TANIMI VE MİKTAR BİLGİLERİ</span>
+                  </div>
+                  
+                  {/* FLEX ROW: Yüzdelik paylaşımlar burada yapılır */}
+                  <div className="flex w-full">
+                    
+                    {/* 1. Atık Kodu (%12) */}
+                    <div className="w-[12%] border-r border-gray-300">
+                       <ExcelCell label="Atık Kodu (EWC)" required className="border-none">
+                         <Input 
+                            name="wasteCode"
+                            placeholder="08 01 11"
+                            value={formData.wasteCode}
+                            onChange={handleInputChange}
+                            className={`${inputClass} font-bold text-center text-blue-700`}
+                         />
+                       </ExcelCell>
+                    </div>
+
+                    {/* 2. Atık Tanımı (%33) - EN GENİŞ ALAN */}
+                    <div className="w-[33%] border-r border-gray-300">
+                       <ExcelCell label="Atık Tanımı" className="border-none">
+                         <Input 
+                            name="wasteDescription"
+                            placeholder="Atık içeriğini buraya giriniz..."
+                            value={formData.wasteDescription}
+                            onChange={handleInputChange}
+                            className={inputClass}
+                         />
+                       </ExcelCell>
+                    </div>
+
+                    {/* 3. H Kodu (%8) */}
+                    <div className="w-[8%] border-r border-gray-300">
+                       <ExcelCell label="H Kodu" className="border-none text-center">
+                         <Input 
+                            name="hazardCode"
+                            placeholder="H3"
+                            value={formData.hazardCode}
+                            onChange={handleInputChange}
+                            className={`${inputClass} text-center`}
+                         />
+                       </ExcelCell>
+                    </div>
+
+                     {/* 4. Fiziksel Özellik (%15) */}
+                    <div className="w-[15%] border-r border-gray-300">
+                       <ExcelCell label="Fiziksel Özellik" className="border-none">
+                          <Select onValueChange={(v) => handleSelectChange("physicalState", v)} value={formData.physicalState}>
+                            <SelectTrigger className="border-0 p-0 h-7 focus:ring-0 shadow-none bg-transparent text-sm">
+                              <SelectValue placeholder="Seç" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Kati">Katı</SelectItem>
+                              <SelectItem value="Sivi">Sıvı</SelectItem>
+                              <SelectItem value="Camur">Çamur</SelectItem>
+                            </SelectContent>
+                          </Select>
+                       </ExcelCell>
+                    </div>
+
+                     {/* 5. Ambalaj (%15) */}
+                    <div className="w-[15%] border-r border-gray-300">
+                       <ExcelCell label="Ambalaj Türü" className="border-none">
+                          <Select onValueChange={(v) => handleSelectChange("packagingType", v)} value={formData.packagingType}>
+                            <SelectTrigger className="border-0 p-0 h-7 focus:ring-0 shadow-none bg-transparent text-sm">
+                              <SelectValue placeholder="Seç" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Dokme">Dökme</SelectItem>
+                              <SelectItem value="Varil">Varil</SelectItem>
+                              <SelectItem value="IBC">IBC Tank</SelectItem>
+                              <SelectItem value="Konteyner">Konteyner</SelectItem>
+                            </SelectContent>
+                          </Select>
+                       </ExcelCell>
+                    </div>
+
+                     {/* 6. Miktar (%17) */}
+                    <div className="w-[17%]">
+                       <ExcelCell label="Miktar" required className="border-none bg-yellow-50/30" contentClass="gap-1">
+                          <Input 
+                            name="amount"
+                            type="number"
+                            placeholder="0.00"
+                            value={formData.amount}
+                            onChange={handleInputChange}
+                            className={`${inputClass} text-right font-bold`}
+                          />
+                          <Select onValueChange={(v) => handleSelectChange("unit", v)} value={formData.unit}>
+                            <SelectTrigger className="border border-gray-200 h-6 w-14 bg-white rounded-sm text-xs focus:ring-0 px-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="kg">kg</SelectItem>
+                              <SelectItem value="ton">ton</SelectItem>
+                            </SelectContent>
+                          </Select>
+                       </ExcelCell>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" onClick={handleSubmit}>Kaydı Oluştur</Button>
-            </DialogFooter>
+
+              <div className="mt-4 flex items-center justify-end gap-3">
+                 <Button variant="ghost" type="button" onClick={() => setIsNewOpen(false)}>İptal</Button>
+                 <Button type="submit" className="bg-blue-600 hover:bg-blue-700 px-8">
+                    <Truck className="mr-2 h-4 w-4" /> 
+                    Kaydet
+                 </Button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* GÖNDERİM LİSTESİ - KART GÖRÜNÜMÜ */}
-      <div className="grid gap-4">
-        {shipments.length === 0 ? (
-          <Card className="bg-slate-50 border-dashed">
-            <CardContent className="h-24 flex items-center justify-center text-gray-500">
-              Henüz gönderim kaydı bulunmamaktadır.
-            </CardContent>
-          </Card>
-        ) : (
-          shipments.map((s) => {
-            const waste = wasteTypes.find(w => w.id === s.wasteTypeId);
-            const vehicle = vehicles.find(v => v.id === s.vehicleId);
-            
-            return (
-              <Card key={s.id} className="overflow-hidden transition-all hover:shadow-md">
-                <CardHeader className="bg-gray-50/50 pb-4 border-b">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle className="text-lg text-gray-800">Sevkiyat #{s.id.toUpperCase()}</CardTitle>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {new Date(s.createdAt).toLocaleDateString('tr-TR')} - {new Date(s.createdAt).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="bg-white text-base px-3 py-1 font-normal">
-                      {s.amount} kg
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Toplam Gönderim</CardTitle>
+            <Truck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{shipments.filter(s => s.senderId === 'current-user').length}</div>
+            <p className="text-xs text-muted-foreground">Bu ay yapılan seferler</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Son Gönderimler</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {shipments.filter(s => s.senderId === 'current-user').map((shipment) => (
+              <div
+                key={shipment.id}
+                className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-gray-50 transition-colors"
+              >
+                <div className="grid gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-lg">{shipment.code}</span>
+                    <Badge variant={shipment.status === 'teslim_edildi' ? 'default' : 'secondary'}>
+                      {shipment.status.replace('_', ' ').toUpperCase()}
                     </Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="grid md:grid-cols-3 gap-6 mb-6">
-                    <div>
-                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ALICI FİRMA</span>
-                      <span className="font-medium text-gray-900">{s.receiverName}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ATIK TÜRÜ</span>
-                      <span className="font-medium text-gray-900">{waste?.code} - {waste?.name}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-gray-400 block mb-1 tracking-wider">ARAÇ & SÜRÜCÜ</span>
-                      <span className="font-medium text-gray-900 flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-gray-500"/> {vehicle?.plate}
-                      </span>
-                    </div>
+                  <div className="text-sm text-muted-foreground flex gap-6 mt-1">
+                    <span className="flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4 text-gray-500" /> {shipment.receiverName}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <User className="h-4 w-4 text-gray-500" /> {shipment.plateNumber}
+                    </span>
+                    <span className="font-medium text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
+                      {shipment.wasteCode}
+                    </span>
+                    <span>
+                      {shipment.amount} {shipment.unit}
+                    </span>
                   </div>
-                  
-                  {/* SÜREÇ TAKİP BİLEŞENİ */}
-                  <div className="mt-4 bg-slate-50/80 p-4 rounded-lg border border-slate-100">
-                    <ShipmentTracker status={s.status} />
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
+                </div>
+                <div className="text-sm text-right text-muted-foreground">
+                   <div>{new Date(shipment.createdAt).toLocaleDateString('tr-TR')}</div>
+                   <div className="text-xs mt-1">{new Date(shipment.createdAt).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

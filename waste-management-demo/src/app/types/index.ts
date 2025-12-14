@@ -1,37 +1,42 @@
+export type UserRole = 'sender' | 'receiver' | 'carrier' | 'admin' | 'security';
 
-export type Role = 'admin' | 'sender' | 'security' | 'receiver';
-
-export type ShipmentStatus = 'CREATED' | 'SECURITY_PENDING' | 'ON_WAY' | 'DELIVERED';
-
-export interface Company {
-  id: string;
-  name: string;
-  role: Role; // Bu firmanın tipi ne? (Sadece sender veya receiver olabilir)
-}
-
-export interface Vehicle {
-  id: string;
-  plate: string;
-  driverName: string;
-  driverPhone: string;
-}
-
-export interface WasteType {
-  id: string;
-  name: string;
-  code: string;
-}
+export type ShipmentStatus = 
+  | 'olusturuldu' // Created
+  | 'tasimada'    // In Transit
+  | 'teslim_edildi' // Delivered
+  | 'onaylandi'   // Approved
+  | 'reddedildi'; // Rejected
 
 export interface Shipment {
   id: string;
-  senderId: string;   // Hangi firma gönderdi?
-  receiverId: string; // Kime gidiyor?
-  senderName: string; // Görüntüleme kolaylığı için (Join yapmamak adına)
+  code: string; // Transfer Kodu (UATF No)
+  
+  // Gönderici Bilgileri
+  senderId: string;
+  senderName: string;
+  
+  // Alıcı Bilgileri
+  receiverId: string;
   receiverName: string;
-  wasteTypeId: string;
+  
+  // Taşıyıcı Bilgileri
+  carrierName: string;
+  plateNumber: string;
+  driverName: string;
+  driverId?: string; // Sürücü TC
+  
+  // Atık Bilgileri
+  wasteCode: string; // EWC Kodu
+  wasteDescription?: string; // Atık Tanımı
   amount: number;
-  vehicleId: string;
-  documentUrl?: string;
+  unit: 'kg' | 'ton';
+  physicalState?: string; // Fiziksel Özellik (Katı, Sıvı vs.)
+  packagingType?: string; // Ambalaj Türü (Varil, IBC vs.)
+  hazardCode?: string; // H Kodu
+  
   status: ShipmentStatus;
   createdAt: string;
+  updatedAt: string;
+  estimatedArrival?: string;
+  actualArrival?: string;
 }
