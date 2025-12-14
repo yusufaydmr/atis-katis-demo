@@ -34,20 +34,25 @@ import { cn } from "@/lib/utils"
 import { Shipment } from "@/app/types"
 
 // --- EXCEL HÜCRE BİLEŞENİ ---
+// GÜNCELLEME: headerClass varsayılanı daha nötr hale getirildi.
 const ExcelCell = ({ 
   label, 
   children, 
-  className 
+  className,
+  headerClass = "bg-gray-50 text-gray-700" 
 }: { 
   label: string; 
   children: React.ReactNode; 
-  className?: string 
+  className?: string;
+  headerClass?: string;
 }) => (
-  <div className={cn("flex flex-col px-3 py-2 border-r border-gray-200 last:border-r-0 h-full justify-center bg-white", className)}>
-    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+  <div className={cn("flex flex-col h-full border-r border-gray-200 last:border-r-0 bg-white", className)}>
+    {/* BAŞLIK KUTUSU: Pastel tonlar için border-b eklendi */}
+    <div className={cn("w-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide border-b border-gray-100", headerClass)}>
       {label}
-    </label>
-    <div className="flex-1 flex items-center">
+    </div>
+    {/* İÇERİK ALANI */}
+    <div className="flex-1 flex items-center px-3 py-2">
       {children}
     </div>
   </div>
@@ -74,11 +79,8 @@ export default function SenderPage() {
   const handleCreateShipment = () => {
     if (!newShipment.receiverId || !newShipment.wasteCode || !newShipment.amount) return
 
-    // Plakadan araç ID'sini bul
     const matchedVehicle = vehicles.find(v => v.plate === newShipment.vehiclePlate)
     const vehicleIdToUse = matchedVehicle ? matchedVehicle.id : (vehicles[0]?.id || "v1")
-    
-    // Atık ID'sini bul
     const wasteTypeIdToUse = selectedWaste ? selectedWaste.id : (wasteTypes[0]?.id || "w1")
 
     const shipmentData: Shipment = {
@@ -97,7 +99,6 @@ export default function SenderPage() {
     addShipment(shipmentData)
     setIsNewShipmentOpen(false)
     
-    // Formu sıfırla
     setNewShipment({
       receiverId: "",
       transporterId: "",
@@ -187,20 +188,20 @@ export default function SenderPage() {
               <div className="p-6">
                 <div className="bg-white border border-gray-300 rounded-sm shadow-sm overflow-hidden">
                   
-                  {/* BÖLÜM A */}
+                  {/* BÖLÜM A: PASTEL MAVİ BAŞLIKLAR (Lojistik) */}
                   <div className="grid grid-cols-3 border-b border-gray-300">
-                    <ExcelCell label="GÖNDEREN FİRMA (SİZ)">
+                    <ExcelCell label="GÖNDEREN FİRMA (SİZ)" headerClass="bg-blue-50 text-blue-700">
                       <div className="text-sm font-medium text-gray-900 pl-1">
                         {companies.find(c => c.id === currentCompanyId)?.name || "Firma Seçilmedi"}
                       </div>
                     </ExcelCell>
 
-                    <ExcelCell label="TAŞIYICI FİRMA">
+                    <ExcelCell label="TAŞIYICI FİRMA" headerClass="bg-blue-50 text-blue-700">
                       <Select 
                         value={newShipment.transporterId} 
                         onValueChange={(val) => setNewShipment(s => ({ ...s, transporterId: val }))}
                       >
-                        <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm font-medium text-blue-700 bg-transparent">
+                        <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm font-medium text-gray-900 bg-transparent">
                           <SelectValue placeholder="Seçiniz..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -211,12 +212,12 @@ export default function SenderPage() {
                       </Select>
                     </ExcelCell>
 
-                    <ExcelCell label="ALICI FİRMA">
+                    <ExcelCell label="ALICI FİRMA" headerClass="bg-blue-50 text-blue-700">
                       <Select 
                         value={newShipment.receiverId} 
                         onValueChange={(val) => setNewShipment(s => ({ ...s, receiverId: val }))}
                       >
-                        <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm font-medium text-blue-700 bg-transparent">
+                        <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm font-medium text-gray-900 bg-transparent">
                           <SelectValue placeholder="Seçiniz..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -228,9 +229,9 @@ export default function SenderPage() {
                     </ExcelCell>
                   </div>
 
-                  {/* BÖLÜM B */}
+                  {/* BÖLÜM B: PASTEL KIRMIZI BAŞLIKLAR (Sefer/Kritik) */}
                   <div className="grid grid-cols-4 border-b border-gray-300">
-                    <ExcelCell label="PLANLANAN SEFER TARİHİ">
+                    <ExcelCell label="PLANLANAN SEFER TARİHİ" headerClass="bg-red-50 text-red-700">
                       <Input 
                         type="date"
                         value={newShipment.plannedDate}
@@ -239,12 +240,10 @@ export default function SenderPage() {
                       />
                     </ExcelCell>
 
-                    <ExcelCell label="ARAÇ PLAKASI">
-                      {/* DÜZELTME: Dropdown (Select) olarak değiştirildi */}
+                    <ExcelCell label="ARAÇ PLAKASI" headerClass="bg-red-50 text-red-700">
                       <Select 
                         value={newShipment.vehiclePlate}
                         onValueChange={(val) => {
-                          // Aracı bul ve sürücüsünü de otomatik doldur
                           const vehicle = vehicles.find(v => v.plate === val)
                           setNewShipment(s => ({ 
                             ...s, 
@@ -264,7 +263,7 @@ export default function SenderPage() {
                       </Select>
                     </ExcelCell>
 
-                    <ExcelCell label="SÜRÜCÜ ADI SOYADI">
+                    <ExcelCell label="SÜRÜCÜ ADI SOYADI" headerClass="bg-red-50 text-red-700">
                       <Input 
                         placeholder="İsim Giriniz" 
                         value={newShipment.driverName}
@@ -273,16 +272,16 @@ export default function SenderPage() {
                       />
                     </ExcelCell>
 
-                    <ExcelCell label="SEFER TÜRÜ">
+                    <ExcelCell label="SEFER TÜRÜ" headerClass="bg-red-50 text-red-700">
                        <span className="text-gray-400 text-sm italic">Tek Yön / Standart</span>
                     </ExcelCell>
                   </div>
 
-                  {/* BÖLÜM C */}
+                  {/* BÖLÜM C: PASTEL YEŞİL BAŞLIKLAR (Atık/Çevre) */}
                   <div className="flex w-full border-b border-gray-300 min-h-[70px]">
                     
-                    <div className="w-[12%]">
-                      <ExcelCell label="ATIK KODU">
+                    <div className="w-[15%]">
+                      <ExcelCell label="ATIK KODU" headerClass="bg-green-50 text-green-700">
                         <Select 
                           value={newShipment.wasteCode} 
                           onValueChange={(val) => setNewShipment(s => ({ ...s, wasteCode: val }))}
@@ -299,16 +298,16 @@ export default function SenderPage() {
                       </ExcelCell>
                     </div>
 
-                    <div className="w-[33%]">
-                      <ExcelCell label="ATIK TANIMI">
+                    <div className="w-[45%]">
+                      <ExcelCell label="ATIK TANIMI" headerClass="bg-green-50 text-green-700">
                         <div className="text-sm text-gray-700 py-1">
                           {selectedWaste ? selectedWaste.name : "Atık kodu seçildiğinde otomatik gelir..."}
                         </div>
                       </ExcelCell>
                     </div>
 
-                    <div className="w-[17%]">
-                      <ExcelCell label="MİKTAR (NET)">
+                    <div className="w-[25%]">
+                      <ExcelCell label="MİKTAR (NET)" headerClass="bg-green-50 text-green-700">
                         <Input 
                           type="number"
                           placeholder="0.00" 
@@ -319,38 +318,9 @@ export default function SenderPage() {
                       </ExcelCell>
                     </div>
 
-                    <div className="w-[10%]">
-                      <ExcelCell label="BİRİM">
-                         <span className="text-sm font-medium text-gray-900">KG</span>
-                      </ExcelCell>
-                    </div>
-
-                    <div className="w-[13%]">
-                      <ExcelCell label="AMBALAJ TÜRÜ">
-                         <Select defaultValue="dokme">
-                            <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm text-gray-900 bg-transparent">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="dokme">Dökme</SelectItem>
-                              <SelectItem value="ibc">IBC Tank</SelectItem>
-                              <SelectItem value="varil">Varil</SelectItem>
-                            </SelectContent>
-                         </Select>
-                      </ExcelCell>
-                    </div>
-
                     <div className="flex-1">
-                      <ExcelCell label="H KODU">
-                         <Select defaultValue="h3a">
-                            <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-auto text-sm text-gray-900 bg-transparent">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="h3a">H3-A</SelectItem>
-                              <SelectItem value="h5">H5</SelectItem>
-                            </SelectContent>
-                         </Select>
+                      <ExcelCell label="BİRİM" headerClass="bg-green-50 text-green-700">
+                         <span className="text-sm font-medium text-gray-900">KG</span>
                       </ExcelCell>
                     </div>
 
@@ -359,7 +329,7 @@ export default function SenderPage() {
                 
                 <div className="mt-4 flex items-start gap-2 text-xs text-gray-500">
                     <div className="w-4 h-4 mt-0.5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">i</div>
-                    <p>Bu form MoTAT (Mobil Tehlikeli Atık Takip) sistemi ile entegre çalışır. Kaydet butonuna bastığınızda alıcı ve taşıyıcı firmaya otomatik bildirim gönderilecektir.</p>
+                    <p>Kaydet butonuna bastığınızda alıcı ve taşıyıcı firmaya otomatik bildirim gönderilecektir.</p>
                 </div>
 
               </div>
