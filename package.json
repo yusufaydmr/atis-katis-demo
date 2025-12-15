@@ -1,5 +1,13 @@
 {
   "dependencies": {
+    "expo": "^54.0.29",
+    "react": "^19.2.3",
+    "react-native": "^0.83.0",
     "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-native": "^0.72.8",
+    "typescript": "^5.9.3"
   }
 }
