@@ -1,9 +1,5 @@
 import { View, ViewProps, Text } from 'react-native';
-import { styled } from 'nativewind';
 import { cn } from './Text';
-
-const StyledView = styled(View);
-const StyledText = styled(Text);
 
 interface BadgeProps extends ViewProps {
   variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info';
@@ -33,17 +29,17 @@ export function Badge({ variant = 'default', className, children, ...props }: Ba
   };
 
   return (
-    <StyledView
+    <View
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        "inline-flex items-center rounded-full border px-2.5 py-0.5",
         variants[variant],
         className
       )}
       {...props}
     >
-      <StyledText className={cn("text-xs font-semibold", textColors[variant])}>
+      <Text className={cn("text-xs font-semibold", textColors[variant])}>
         {children}
-      </StyledText>
-    </StyledView>
+      </Text>
+    </View>
   );
 }

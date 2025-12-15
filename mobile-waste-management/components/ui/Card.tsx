@@ -1,8 +1,5 @@
 import { View, ViewProps } from 'react-native';
-import { styled } from 'nativewind';
 import { cn } from './Text';
-
-const StyledView = styled(View);
 
 interface CardProps extends ViewProps {
   className?: string;
@@ -10,7 +7,7 @@ interface CardProps extends ViewProps {
 
 export function Card({ className, ...props }: CardProps) {
   return (
-    <StyledView
+    <View
       className={cn("bg-white rounded-xl border border-gray-200 shadow-sm p-4", className)}
       {...props}
     />
@@ -18,13 +15,13 @@ export function Card({ className, ...props }: CardProps) {
 }
 
 export function CardHeader({ className, ...props }: CardProps) {
-  return <StyledView className={cn("mb-2", className)} {...props} />;
+  return <View className={cn("mb-2", className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: CardProps) {
-  return <StyledView className={cn("", className)} {...props} />;
+  return <View className={cn("", className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }: CardProps) {
-  return <StyledView className={cn("", className)} {...props} />;
+  return <View className={cn("", className)} {...props} />;
 }
