@@ -1,21 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import { useMockData } from "@/context/MockDataContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Filter, Download, CheckCircle } from "lucide-react";
+import { Filter, Download, CheckCircle, XCircle } from "lucide-react";
 import { exportToCSV } from "@/lib/utils";
+import { FilterDialog, FilterCriteria } from "@/components/FilterDialog"; 
+import { Badge } from "@/components/ui/badge";
 
 export function IncomingTable() {
   const { shipments, vehicles, wasteTypes, updateShipmentStatus, companies, currentCompanyId } = useMockData();
   const activeReceiverId = currentCompanyId || "comp_receiver_1";
-  const incomingShipments = shipments.filter(s => s.receiverId === activeReceiverId && s.status === "ON_WAY");
 
-  // Helperlar
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<FilterCriteria | null>(null);
+
   const getWasteCodeById = (id: string) => wasteTypes.find(w => w.id === id)?.code || id;
   const getWasteNameById = (id: string) => wasteTypes.find(w => w.id === id)?.name || "-";
-  
   const formatDate = (dateString: string) => {
     try {
         const d = new Date(dateString)
@@ -23,7 +26,27 @@ export function IncomingTable() {
     } catch { return dateString }
   }
 
-  // --- EXCEL İNDİRME ---
+  const isFiltersEmpty = (filters: FilterCriteria | null) => {
+      if (!filters) return true;
+      return !filters.startDate && !filters.endDate && (filters.wasteTypeId === "ALL");
+  }
+
+  const incomingShipments = shipments.filter(s => {
+    if (s.receiverId !== activeReceiverId || s.status !== "ON_WAY") return false;
+    if (isFiltersEmpty(activeFilters)) return true;
+
+    const itemDate = new Date(s.createdAt).getTime();
+    if (activeFilters?.startDate && itemDate < new Date(activeFilters.startDate).getTime()) return false;
+    if (activeFilters?.endDate) {
+        const end = new Date(activeFilters.endDate);
+        end.setHours(23, 59, 59);
+        if (itemDate > end.getTime()) return false;
+    }
+    if (activeFilters?.wasteTypeId && activeFilters.wasteTypeId !== "ALL" && s.wasteTypeId !== activeFilters.wasteTypeId) return false;
+
+    return true;
+  });
+
   const handleDownloadExcel = () => {
     const excelData = incomingShipments.map(s => {
         const vehicle = vehicles.find(v => v.id === s.vehicleId);
@@ -36,7 +59,7 @@ export function IncomingTable() {
             "Atık Kodu": getWasteCodeById(s.wasteTypeId),
             "Atık Tanımı": getWasteNameById(s.wasteTypeId),
             "Miktar (KG)": s.amount,
-            "Durum": "Yolda (Bekleniyor)"
+            "Durum": "Yolda"
         };
     });
     exportToCSV(excelData, "Gelen_Arac_Listesi");
@@ -48,24 +71,47 @@ export function IncomingTable() {
     }
   };
 
+  const hasActiveFilters = !isFiltersEmpty(activeFilters);
+
   return (
     <Card className="border shadow-md">
       <CardHeader className="flex flex-row items-center justify-between bg-gray-50/50 border-b py-4">
           <div>
               <CardTitle className="text-lg font-bold text-gray-800">Beklenen Teslimatlar</CardTitle>
-              <p className="text-xs text-gray-500 mt-1">Tesisinize yönlendirilmiş ve yolda olan araçlar.</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs text-gray-500">Tesisinize yönlendirilmiş ve yolda olan araçlar.</p>
+                {hasActiveFilters && (
+                    <Badge variant="secondary" className="text-[10px] h-5 bg-purple-100 text-purple-700 hover:bg-purple-200 gap-1 cursor-pointer select-none" onClick={() => setActiveFilters(null)}>
+                        Filtreler Aktif 
+                        <XCircle className="w-3 h-3" />
+                    </Badge>
+                )}
+              </div>
           </div>
           <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="bg-white">
-                  <Filter className="mr-2 h-4 w-4 text-gray-500" /> Filtrele
+              <Button 
+                variant={hasActiveFilters ? "default" : "outline"} 
+                size="sm" 
+                className={hasActiveFilters ? "bg-purple-600 hover:bg-purple-700" : "bg-white"}
+                onClick={() => setIsFilterOpen(true)}
+              >
+                  <Filter className="mr-2 h-4 w-4" /> Filtrele
               </Button>
-              {/* BUTON BAĞLANDI */}
               <Button variant="outline" size="sm" className="bg-white" onClick={handleDownloadExcel}>
                   <Download className="mr-2 h-4 w-4 text-gray-500" /> Excel
               </Button>
           </div>
       </CardHeader>
       
+      <FilterDialog 
+        open={isFilterOpen} 
+        onOpenChange={setIsFilterOpen} 
+        onApply={setActiveFilters} 
+        wasteTypes={wasteTypes}
+        showStatusFilter={false}
+        initialFilters={activeFilters}
+      />
+
       <div className="overflow-x-auto">
         <Table className="border-collapse border-b border-gray-200">
           <TableHeader>
@@ -85,7 +131,7 @@ export function IncomingTable() {
             {incomingShipments.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="h-32 text-center text-gray-500">
-                  Şu anda size gelmekte olan bir araç yok.
+                  {hasActiveFilters ? "Filtrelere uygun araç bulunamadı." : "Şu anda size gelmekte olan bir araç yok."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -102,11 +148,7 @@ export function IncomingTable() {
                     <TableCell className="border-r border-gray-200 py-2 text-gray-600 truncate max-w-[150px]" title={getWasteNameById(s.wasteTypeId)}>{getWasteNameById(s.wasteTypeId)}</TableCell>
                     <TableCell className="border-r border-gray-200 py-2 text-right font-mono font-medium text-gray-900">{s.amount.toLocaleString("tr-TR")}</TableCell>
                     <TableCell className="py-2 text-center">
-                      <Button 
-                          size="sm" 
-                          className="h-6 text-[10px] bg-purple-600 hover:bg-purple-700 w-full" 
-                          onClick={() => handleReceive(s.id)}
-                      >
+                      <Button size="sm" className="h-6 text-[10px] bg-purple-600 hover:bg-purple-700 w-full" onClick={() => handleReceive(s.id)}>
                         <CheckCircle className="w-3 h-3 mr-1" /> TESLİM AL
                       </Button>
                     </TableCell>
