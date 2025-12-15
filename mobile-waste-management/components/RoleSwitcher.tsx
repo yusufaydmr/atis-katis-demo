@@ -7,7 +7,7 @@ import { Text } from './ui/Text';
 import { Role } from '../types';
 
 export function RoleSwitcher() {
-  const { role, loginAs, companies } = useMockData();
+  const { role, loginAs, companies, currentCompanyId } = useMockData();
 
   // Filter companies based on role for sub-selection if needed,
   // but simpler logic: just select role first.
@@ -51,7 +51,7 @@ export function RoleSwitcher() {
                 <Text className="text-sm font-medium text-slate-500 mb-2">Firma Seçimi</Text>
                 <View className="bg-white border border-gray-300 rounded-md overflow-hidden">
                     <Picker
-                        selectedValue={useMockData().currentCompanyId}
+                        selectedValue={currentCompanyId}
                         onValueChange={(itemValue) => loginAs(role, itemValue || undefined)}
                     >
                          {companies

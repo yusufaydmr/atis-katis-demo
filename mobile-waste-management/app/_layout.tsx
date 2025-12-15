@@ -1,6 +1,7 @@
 import React from 'react';
 import { Stack } from 'expo-router';
 import { MockDataProvider } from '../context/MockDataContext';
+import "../global.css";
 
 export default function RootLayout() {
   return (
