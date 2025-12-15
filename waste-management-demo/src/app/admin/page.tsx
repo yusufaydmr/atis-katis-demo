@@ -5,24 +5,24 @@ import { useMockData } from "@/context/MockDataContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// İkonlar güncellendi
-import { Trash2, Plus, FileBarChart, Truck, Database, BarChart3, TrendingUp, Scale, AlertTriangle } from "lucide-react";
+// YENİ İKON: Droplets eklendi
+import { Trash2, Plus, FileBarChart, Truck, Database, TrendingUp, Scale, AlertTriangle, Droplets } from "lucide-react";
 import { Vehicle, WasteType } from "../types";
 
+// Grafik Bileşeni
+import { WasteDistributionChart } from "@/components/charts/WasteDistributionChart";
+
 export default function AdminPage() {
-  // 'companies' buraya eklendi (Hata Çözümü #1)
   const { vehicles, wasteTypes, shipments, role, addVehicle, removeVehicle, addWasteType, removeWasteType, companies } = useMockData();
   
-  // Modal (Dialog) Kontrol State'leri
   const [isVehicleDialogOpen, setIsVehicleDialogOpen] = useState(false);
   const [isWasteDialogOpen, setIsWasteDialogOpen] = useState(false);
 
-  // Form State'leri
   const [newVehicle, setNewVehicle] = useState({ plate: "", driverName: "", driverPhone: "" });
   const [newWaste, setNewWaste] = useState({ code: "", name: "" });
 
@@ -30,15 +30,23 @@ export default function AdminPage() {
     return <div className="p-10 text-center text-red-500 font-bold">Bu sayfaya erişim yetkiniz yok.</div>;
   }
 
-  // İSTATİSTİK HESAPLAMALARI
+  // --- İSTATİSTİK HESAPLAMALARI ---
+  // 1. Toplam Atık (kg) - Şimdilik tümünü atık varsayıyoruz veya 'Su' olmayanları filtreleyebiliriz
   const totalWeight = shipments.reduce((acc, curr) => acc + curr.amount, 0);
+  
+  // 2. Toplam Su (Lt) - Demo olduğu için, içinde "Su" geçen atık tiplerini toplayalım veya mock bir değer gösterelim
+  // Gerçek senaryoda: shipments.filter(s => s.unit === 'LT').reduce(...)
+  const totalWater = shipments.filter(s => {
+      const type = wasteTypes.find(w => w.id === s.wasteTypeId);
+      return type?.name.toLowerCase().includes("su");
+  }).reduce((acc, curr) => acc + curr.amount, 0);
+
   const activeShipmentsCount = shipments.filter(s => s.status !== 'DELIVERED').length;
   const hazardousWasteCount = shipments.filter(s => {
     const w = wasteTypes.find(wt => wt.id === s.wasteTypeId);
     return w?.code.startsWith("18") || w?.name.includes("Tehlikeli"); 
   }).length;
 
-  // Araç Ekleme İşlemi
   const handleAddVehicle = () => {
     if (newVehicle.plate && newVehicle.driverName) {
       const v: Vehicle = {
@@ -51,7 +59,6 @@ export default function AdminPage() {
     }
   };
 
-  // Atık Ekleme İşlemi
   const handleAddWaste = () => {
     if (newWaste.code && newWaste.name) {
       const w: WasteType = {
@@ -78,22 +85,37 @@ export default function AdminPage() {
           <TabsTrigger value="wastetypes"><Database className="w-4 h-4 mr-2"/> Atık Kodları</TabsTrigger>
         </TabsList>
 
-        {/* --- SEKME 1: RAPORLAR (GÜNCELLENDİ) --- */}
+        {/* --- SEKME 1: RAPORLAR --- */}
         <TabsContent value="reports" className="space-y-4">
           
-          {/* ÖZET KARTLARI */}
+          {/* ÖZET KARTLARI (4 ADET) */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            
+            {/* KART 1: TOPLAM ATIK */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Toplam Taşıma</CardTitle>
+                <CardTitle className="text-sm font-medium">Toplam Atık</CardTitle>
                 <Scale className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalWeight.toLocaleString()} kg</div>
-                <p className="text-xs text-muted-foreground">Sistemdeki toplam atık hacmi</p>
+                <p className="text-xs text-muted-foreground">Genel atık hacmi</p>
+              </CardContent>
+            </Card>
+
+            {/* KART 2: TOPLAM SU (YENİ) */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Toplam Su</CardTitle>
+                <Droplets className="h-4 w-4 text-cyan-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-cyan-700">{totalWater.toLocaleString()} Lt</div>
+                <p className="text-xs text-muted-foreground">Kullanma/İçme suyu</p>
               </CardContent>
             </Card>
             
+            {/* KART 3: AKTİF SEVKİYAT */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Aktif Sevkiyat</CardTitle>
@@ -101,10 +123,11 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{activeShipmentsCount}</div>
-                <p className="text-xs text-muted-foreground">Şu an işlemde olan araçlar</p>
+                <p className="text-xs text-muted-foreground">Şu an işlemde olan</p>
               </CardContent>
             </Card>
 
+            {/* KART 4: RİSKLİ ATIK */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Riskli Atık</CardTitle>
@@ -117,44 +140,14 @@ export default function AdminPage() {
             </Card>
           </div>
 
-          {/* DETAYLI ANALİZ TABLOLARI */}
+          {/* DETAYLI ANALİZ TABLOLARI & GRAFİKLER */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             
-            {/* TABLO 1: FİRMA BAZLI ÖZET */}
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Firma Performansı</CardTitle>
-                <CardDescription>Hangi firma ne kadar atık gönderdi?</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Firma Adı</TableHead>
-                      <TableHead className="text-right">Sefer Sayısı</TableHead>
-                      <TableHead className="text-right">Toplam (kg)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {/* Hata Çözümü #2 ve #3: 'companies' artık tanımlı olduğu için bu map çalışacak */}
-                    {companies.filter(c => c.role === 'sender').map(company => {
-                      const companyShipments = shipments.filter(s => s.senderId === company.id);
-                      const total = companyShipments.reduce((acc, s) => acc + s.amount, 0);
-                      return (
-                        <TableRow key={company.id}>
-                          <TableCell className="font-medium">{company.name}</TableCell>
-                          <TableCell className="text-right">{companyShipments.length}</TableCell>
-                          <TableCell className="text-right">{total.toLocaleString()}</TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            {/* 1. GRAFİK: Atık Dağılımı (3 birim) */}
+            <WasteDistributionChart shipments={shipments} wasteTypes={wasteTypes} />
 
-            {/* TABLO 2: SON HAREKETLER */}
-            <Card className="col-span-3">
+            {/* 2. TABLO: SON HAREKETLER (4 birim) */}
+            <Card className="col-span-4">
               <CardHeader>
                 <CardTitle>Son Hareketler</CardTitle>
                 <CardDescription>Sistemdeki son 5 işlem</CardDescription>
@@ -177,6 +170,38 @@ export default function AdminPage() {
                      )
                   })}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* 3. TABLO: FİRMA PERFORMANSI (7 birim - Tam satır) */}
+            <Card className="col-span-7">
+              <CardHeader>
+                <CardTitle>Firma Performansı</CardTitle>
+                <CardDescription>Hangi firma ne kadar atık gönderdi?</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Firma Adı</TableHead>
+                      <TableHead className="text-right">Sefer</TableHead>
+                      <TableHead className="text-right">Toplam (kg)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {companies.filter(c => c.role === 'sender').map(company => {
+                      const companyShipments = shipments.filter(s => s.senderId === company.id);
+                      const total = companyShipments.reduce((acc, s) => acc + s.amount, 0);
+                      return (
+                        <TableRow key={company.id}>
+                          <TableCell className="font-medium">{company.name}</TableCell>
+                          <TableCell className="text-right">{companyShipments.length}</TableCell>
+                          <TableCell className="text-right">{total.toLocaleString()}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </div>

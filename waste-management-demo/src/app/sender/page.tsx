@@ -10,12 +10,14 @@ import { SenderStats } from "./components/SenderStats"
 import { ShipmentList } from "./components/ShipmentList"
 import { NewShipmentDialog } from "./components/NewShipmentDialog"
 import { PrintTemplate } from "./components/PrintTemplate"
-import { ShipmentDetailDialog } from "./components/ShipmentDetailDialog" // Yeni eklenen modal
+import { ShipmentDetailDialog } from "./components/ShipmentDetailDialog"
+import { MonthlyTrendChart } from "@/components/charts/MonthlyTrendChart" // Grafik importu
 
 export type DocType = 'WASTE' | 'MACHINE' | 'WATER';
 
 export default function SenderPage() {
-  const { addShipment, companies, wasteTypes, vehicles, currentCompanyId } = useMockData()
+  // DÜZELTME: 'shipments' buraya eklendi
+  const { addShipment, companies, wasteTypes, vehicles, currentCompanyId, shipments } = useMockData()
   
   // Modallar için State
   const [isNewShipmentOpen, setIsNewShipmentOpen] = useState(false)
@@ -109,6 +111,13 @@ export default function SenderPage() {
       <div className="space-y-6 print:hidden">
         {/* İstatistikler */}
         <SenderStats />
+
+        {/* Grafik Alanı */}
+        <div className="grid gap-4 md:grid-cols-1">
+           <MonthlyTrendChart 
+              data={shipments.filter(s => s.senderId === (currentCompanyId || "comp_sender_1"))} 
+           />
+        </div>
 
         {/* Liste - onRowClick prop'u eklendi */}
         <ShipmentList 
