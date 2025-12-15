@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Filter, Download, Plus, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, exportToCSV } from "@/lib/utils"; // exportToCSV eklendi
 import { Shipment } from "@/app/types";
 
 interface ShipmentListProps {
@@ -16,8 +16,6 @@ interface ShipmentListProps {
 
 export function ShipmentList({ onNewClick, onRowClick }: ShipmentListProps) {
   const { shipments, currentCompanyId, companies, vehicles, wasteTypes } = useMockData();
-
-  // MOCK DATA FİX: Eğer currentCompanyId yoksa varsayılan olarak 'comp_sender_1' kullan (Demo için)
   const activeCompanyId = currentCompanyId || "comp_sender_1";
 
   // Helperlar
@@ -34,6 +32,27 @@ export function ShipmentList({ onNewClick, onRowClick }: ShipmentListProps) {
 
   const filteredShipments = shipments.filter(s => s.senderId === activeCompanyId);
 
+  // --- EXCEL İNDİRME İŞLEVİ ---
+  const handleDownloadExcel = () => {
+    // Ham veriyi Excel için okunabilir formata çeviriyoruz
+    const excelData = filteredShipments.map(s => {
+        const vehicle = vehicles.find(v => v.id === s.vehicleId);
+        return {
+            "Transfer ID": s.id.toUpperCase(),
+            "Tarih": formatDate(s.createdAt),
+            "Alıcı Firma": getCompanyName(s.receiverId),
+            "Plaka": vehicle?.plate || "-",
+            "Sürücü": vehicle?.driverName || "-",
+            "Atık Kodu": getWasteCodeById(s.wasteTypeId),
+            "Atık Tanımı": getWasteNameById(s.wasteTypeId),
+            "Miktar (KG)": s.amount,
+            "Durum": s.status === "DELIVERED" ? "Teslim Edildi" : s.status === "ON_WAY" ? "Yolda" : s.status === "SECURITY_PENDING" ? "Onay Bekliyor" : "Taslak"
+        };
+    });
+
+    exportToCSV(excelData, "Gonderilen_Atik_Listesi");
+  };
+
   return (
     <Card className="border shadow-md">
       <CardHeader className="flex flex-row items-center justify-between bg-gray-50/50 border-b py-4">
@@ -46,7 +65,8 @@ export function ShipmentList({ onNewClick, onRowClick }: ShipmentListProps) {
           <Button variant="outline" size="sm" className="bg-white">
             <Filter className="mr-2 h-4 w-4 text-gray-500" /> Filtrele
           </Button>
-          <Button variant="outline" size="sm" className="bg-white">
+          {/* BUTON BAĞLANDI */}
+          <Button variant="outline" size="sm" className="bg-white" onClick={handleDownloadExcel}>
             <Download className="mr-2 h-4 w-4 text-gray-500" /> Excel
           </Button>
           <Button onClick={onNewClick} className="bg-blue-700 hover:bg-blue-800 text-white shadow-sm">
