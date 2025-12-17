@@ -82,7 +82,7 @@ export function ShipmentList({ onNewClick, onRowClick }: ShipmentListProps) {
     <Card className="border shadow-md">
       <CardHeader className="flex flex-row items-center justify-between bg-gray-50/50 border-b py-4">
         <div>
-          <CardTitle className="text-lg font-bold text-gray-800">Atık Transfer Listesi (U-ATOF)</CardTitle>
+          <CardTitle className="text-lg font-bold text-gray-800">Atık Transfer Listesi</CardTitle>
           <div className="flex items-center gap-2 mt-1">
              <p className="text-xs text-gray-500">Tesisinizden çıkan tüm atık transferlerinin detaylı dökümü.</p>
              {/* GÜNCELLEME: Badge tıklanabilir yapıldı */}

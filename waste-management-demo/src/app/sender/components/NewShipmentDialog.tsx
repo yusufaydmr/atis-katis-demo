@@ -7,9 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tractor, Droplets, FileText, Printer, Upload, CheckCircle2, X } from "lucide-react";
+import { Tractor, Droplets, FileText, Printer, Upload, CheckCircle2, X, AlertTriangle, CheckCircle } from "lucide-react";
 import { ExcelCell } from "./ExcelCell";
 import { DocType } from "../page";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface NewShipmentDialogProps {
   open: boolean;
@@ -29,13 +31,12 @@ export function NewShipmentDialog({
   const { companies, currentCompanyId, vehicles, wasteTypes } = useMockData();
   const selectedWaste = wasteTypes.find(w => w.code === formData.wasteCode);
   
-  // Belge yükleme state'i (Form data içine de gömülebilir)
+  // Belge yükleme state'i
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setUploadedFile(e.target.files[0]);
-      // Gerçek senaryoda formData.document = e.target.files[0] yapılır
     }
   };
 
@@ -99,38 +100,90 @@ export function NewShipmentDialog({
                 {/* Orta Taraf (Kırmızı Bölüm - Form Bilgileri) */}
                 <div className="lg:w-[40%] grid grid-cols-2 grid-rows-2 border-r border-gray-300">
                         <div className="h-24 border-b border-r border-gray-200">
-                        <ExcelCell label="TARİH" headerClass="bg-red-50 text-red-700">
-                            <Input type="date" value={formData.plannedDate} onChange={(e) => setFormData({...formData, plannedDate: e.target.value})} className="border-0 shadow-none focus-visible:ring-0 px-0 h-full text-gray-900 bg-transparent w-full font-medium" />
-                        </ExcelCell>
+                          <ExcelCell label="TARİH" headerClass="bg-red-50 text-red-700">
+                              <Input type="date" value={formData.plannedDate} onChange={(e) => setFormData({...formData, plannedDate: e.target.value})} className="border-0 shadow-none focus-visible:ring-0 px-0 h-full text-gray-900 bg-transparent w-full font-medium" />
+                          </ExcelCell>
                         </div>
-                        <div className="h-24 border-b border-gray-200">
-                        <ExcelCell label="ARAÇ PLAKASI" headerClass="bg-red-50 text-red-700">
-                            <Select value={formData.vehiclePlate} onValueChange={(val) => {
-                                const vehicle = vehicles.find(v => v.plate === val)
-                                setFormData({...formData, vehiclePlate: val, driverName: vehicle?.driverName || formData.driverName })
-                            }}>
-                            <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-full flex items-center font-mono font-bold text-gray-900 bg-transparent text-lg"><SelectValue placeholder="PLAKA" /></SelectTrigger>
-                            <SelectContent>{vehicles.map(v => (<SelectItem key={v.id} value={v.plate}>{v.plate}</SelectItem>))}</SelectContent>
-                            </Select>
-                        </ExcelCell>
+                        
+                        {/* GÜNCELLEME: YAZILABİLİR ARAÇ PLAKASI (DATALIST) */}
+                        <div className="h-24 border-b border-gray-200 relative">
+                          <ExcelCell label="ARAÇ PLAKASI" headerClass="bg-red-50 text-red-700">
+                              <Input 
+                                list="vehicle-list" 
+                                className="border-0 shadow-none focus-visible:ring-0 px-0 h-full flex items-center font-mono font-bold text-gray-900 bg-transparent text-lg uppercase placeholder:text-gray-300"
+                                placeholder="PLAKA" 
+                                value={formData.vehiclePlate} 
+                                onChange={(e) => {
+                                   // Eğer listeden seçilirse otomatik şoförü doldur
+                                   const val = e.target.value.toUpperCase();
+                                   const vehicle = vehicles.find(v => v.plate === val);
+                                   setFormData({
+                                      ...formData, 
+                                      vehiclePlate: val, 
+                                      driverName: vehicle?.driverName || formData.driverName 
+                                   });
+                                }} 
+                              />
+                              <datalist id="vehicle-list">
+                                {vehicles.map(v => (
+                                  <option key={v.id} value={v.plate}>{v.driverName}</option>
+                                ))}
+                              </datalist>
+                          </ExcelCell>
                         </div>
+                        
+                        {/* GÜNCELLEME: YAZILABİLİR SÜRÜCÜ ADI (DATALIST) */}
                         <div className="h-24 border-r border-gray-200 text-xs">
-                        <ExcelCell label="SÜRÜCÜ ADI SOYADI" headerClass="bg-red-50 text-red-700">
-                            <Input placeholder="İsim Giriniz" value={formData.driverName} onChange={(e) => setFormData({...formData, driverName: e.target.value})} className="border-0 shadow-none focus-visible:ring-0 px-0 h-full text-gray-900 placeholder:text-gray-300 font-medium" />
-                        </ExcelCell>
+                          <ExcelCell label="SÜRÜCÜ ADI SOYADI" headerClass="bg-red-50 text-red-700">
+                              <Input 
+                                list="driver-list" 
+                                placeholder="İsim Giriniz" 
+                                value={formData.driverName} 
+                                onChange={(e) => setFormData({...formData, driverName: e.target.value})} 
+                                className="border-0 shadow-none focus-visible:ring-0 px-0 h-full text-gray-900 placeholder:text-gray-300 font-medium" 
+                              />
+                               <datalist id="driver-list">
+                                {vehicles.map(v => (
+                                  <option key={v.id} value={v.driverName}>{v.plate}</option>
+                                ))}
+                              </datalist>
+                          </ExcelCell>
                         </div>
+                        
+                        {/* GÜNCELLEME: TRANSFER TÜRÜ RADYO BUTONLARI */}
                         <div className="h-24">
-                        <ExcelCell label="TRANSFER TÜRÜ" headerClass="bg-red-50 text-red-700">
-                            <span className="text-gray-500 text-xs font-medium w-full flex items-center h-full">
-                                {docType === 'WASTE' ? "Tehlikeli / Tehlikesiz" : docType === 'MACHINE' ? "Nakliye / Lowbed" : "Tanker Transferi"}
-                            </span>
-                        </ExcelCell>
+                          <ExcelCell label="TRANSFER TÜRÜ" headerClass="bg-red-50 text-red-700">
+                             {docType === 'WASTE' ? (
+                                <RadioGroup 
+                                    value={formData.transferType || "NON_HAZARDOUS"} 
+                                    onValueChange={(val) => setFormData({...formData, transferType: val})}
+                                    className="flex flex-col justify-center h-full gap-1.5 w-full"
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="HAZARDOUS" id="r1" className="text-red-600 border-red-400 w-3.5 h-3.5" />
+                                        <Label htmlFor="r1" className="cursor-pointer flex items-center gap-1 text-[10px] font-bold text-red-700">
+                                            <AlertTriangle className="w-3 h-3" /> Tehlikeli
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="NON_HAZARDOUS" id="r2" className="text-green-600 border-green-400 w-3.5 h-3.5" />
+                                        <Label htmlFor="r2" className="cursor-pointer flex items-center gap-1 text-[10px] font-bold text-green-700">
+                                            <CheckCircle className="w-3 h-3" /> Tehlikesiz
+                                        </Label>
+                                    </div>
+                                </RadioGroup>
+                             ) : (
+                                <span className="text-gray-500 text-xs font-medium w-full flex items-center h-full">
+                                    {docType === 'MACHINE' ? "Nakliye / Lowbed" : "Tanker Transferi"}
+                                </span>
+                             )}
+                          </ExcelCell>
                         </div>
                 </div>
-                {/* Sağ Taraf (YENİ: Belge Yükleme Alanı) */}
+
+                {/* Sağ Taraf (Belge Yükleme Alanı) */}
                 <div className="lg:w-[25%] bg-gray-50/50 flex flex-col">
                 <ExcelCell label="BEYAN / BELGE YÜKLE" headerClass="bg-orange-50 text-orange-700">
-                    {/* İçeriği hem yatayda (items-center) hem dikeyde (justify-center) ortalayan ana kapsayıcı */}
                     <div className="flex flex-col items-center justify-center h-full w-full py-2 min-h-[80px]">
                     {uploadedFile ? (
                         <div className="flex flex-col items-center justify-center gap-1 text-center">
@@ -166,7 +219,7 @@ export function NewShipmentDialog({
             <div className="flex w-full min-h-[80px]">
                 {docType === 'WASTE' && (
                 <>
-                    <div className="w-[15%]">
+                    <div className="w-[15%] border-r border-gray-200">
                     <ExcelCell label="ATIK KODU" headerClass="bg-green-50 text-green-700">
                         <Select value={formData.wasteCode} onValueChange={(val) => setFormData({...formData, wasteCode: val})}>
                         <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-full flex items-center font-mono font-bold text-gray-900 bg-transparent"><SelectValue placeholder="------" /></SelectTrigger>
@@ -174,12 +227,12 @@ export function NewShipmentDialog({
                         </Select>
                     </ExcelCell>
                     </div>
-                    <div className="w-[30%]">
+                    <div className="w-[30%] border-r border-gray-200">
                     <ExcelCell label="ATIK TANIMI" headerClass="bg-green-50 text-green-700">
                         <div className="text-[11px] text-gray-700 py-1 leading-tight flex items-center h-full font-medium">{selectedWaste ? selectedWaste.name : "..."}</div>
                     </ExcelCell>
                     </div>
-                    <div className="w-[20%]">
+                    <div className="w-[20%] border-r border-gray-200">
                     <ExcelCell label="AMBALAJ TÜRÜ" headerClass="bg-green-50 text-green-700">
                         <Select value={formData.packagingType} onValueChange={(val) => setFormData({...formData, packagingType: val})}>
                         <SelectTrigger className="border-0 shadow-none focus:ring-0 px-0 h-full flex items-center font-medium text-gray-900 bg-transparent text-xs"><SelectValue placeholder="Seçiniz" /></SelectTrigger>
@@ -189,16 +242,59 @@ export function NewShipmentDialog({
                     </div>
                 </>
                 )}
-                {/* ... Diğer docType'lar için yeşil bölümler (Aynı kalıyor) ... */}
                 
-                <div className="w-[20%]">
+                {docType === 'MACHINE' && (
+                  <>
+                     <div className="w-[45%] border-r border-gray-200">
+                       <ExcelCell label="İŞ MAKİNASI" headerClass="bg-green-50 text-green-700">
+                         <Input placeholder="Örn: CAT 320 Ekskavatör" value={formData.machineName} onChange={(e) => setFormData({...formData, machineName: e.target.value})} className="border-0 h-full font-medium" />
+                       </ExcelCell>
+                     </div>
+                     <div className="w-[20%] border-r border-gray-200">
+                       <ExcelCell label="YAPILAN İŞ" headerClass="bg-green-50 text-green-700">
+                         <Input placeholder="Saha Düzenleme" value={formData.workDescription} onChange={(e) => setFormData({...formData, workDescription: e.target.value})} className="border-0 h-full text-xs" />
+                       </ExcelCell>
+                     </div>
+                  </>
+                )}
+
+                {docType === 'WATER' && (
+                  <>
+                     <div className="w-[25%] border-r border-gray-200">
+                       <ExcelCell label="KAYNAK" headerClass="bg-green-50 text-green-700">
+                         <Input placeholder="Kuyu-3" value={formData.waterSource} onChange={(e) => setFormData({...formData, waterSource: e.target.value})} className="border-0 h-full font-medium" />
+                       </ExcelCell>
+                     </div>
+                     <div className="w-[20%] border-r border-gray-200">
+                       <ExcelCell label="KLOR (ppm)" headerClass="bg-green-50 text-green-700">
+                         <Input placeholder="0.5" value={formData.chlorineLevel} onChange={(e) => setFormData({...formData, chlorineLevel: e.target.value})} className="border-0 h-full text-center" />
+                       </ExcelCell>
+                     </div>
+                     <div className="w-[20%] border-r border-gray-200">
+                       <ExcelCell label="pH" headerClass="bg-green-50 text-green-700">
+                         <Input placeholder="7.2" value={formData.phLevel} onChange={(e) => setFormData({...formData, phLevel: e.target.value})} className="border-0 h-full text-center" />
+                       </ExcelCell>
+                     </div>
+                  </>
+                )}
+                
+                <div className="w-[20%] border-r border-gray-200">
                 <ExcelCell label="MİKTAR" headerClass="bg-green-50 text-green-700">
-                    <Input type="number" placeholder="0.00" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="border-0 shadow-none focus-visible:ring-0 px-0 h-full text-right font-bold text-lg text-gray-900" />
+                    <Input 
+                      type="number" 
+                      placeholder="0.00" 
+                      value={docType === 'MACHINE' ? formData.workHours : formData.amount} 
+                      onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({...formData, amount: val, workHours: val})
+                      }} 
+                      className="border-0 shadow-none focus-visible:ring-0 px-0 h-full text-right font-bold text-lg text-gray-900" 
+                    />
                 </ExcelCell>
                 </div>
                 <div className="flex-1">
                 <ExcelCell label="BİRİM" headerClass="bg-green-50 text-green-700">
-                    <span className="text-sm font-bold text-gray-900 flex items-center h-full">
+                    <span className="text-sm font-bold text-gray-900 flex items-center justify-center h-full w-full">
                         {docType === 'MACHINE' ? "SAAT" : docType === 'WATER' ? "LT" : "KG"}
                     </span>
                 </ExcelCell>
