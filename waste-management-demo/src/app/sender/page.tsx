@@ -72,6 +72,13 @@ export default function SenderPage() {
       vehicleId: vehicleIdToUse,
       status: isDraft ? "CREATED" : "SECURITY_PENDING", 
       createdAt: new Date(formData.plannedDate).toISOString(),
+      docType: docType,
+      machineName: formData.machineName,
+      workDescription: formData.workDescription,
+      workHours: formData.workHours,
+      waterSource: formData.waterSource,
+      phLevel: formData.phLevel,
+      chlorineLevel: formData.chlorineLevel
     }
 
     addShipment(shipmentData)

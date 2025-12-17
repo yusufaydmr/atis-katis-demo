@@ -1,12 +1,45 @@
+export type Role = 'sender' | 'receiver' | 'transporter' | 'admin' | 'security';
+export type ShipmentStatus = 'CREATED' | 'SECURITY_PENDING' | 'ON_WAY' | 'DELIVERED' | 'CANCELLED';
 
-export type Role = 'admin' | 'sender' | 'security' | 'receiver';
+// YENİ: Doküman Tipi Tanımı
+export type DocType = 'WASTE' | 'MACHINE' | 'WATER';
 
-export type ShipmentStatus = 'CREATED' | 'SECURITY_PENDING' | 'ON_WAY' | 'DELIVERED';
+export interface Shipment {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  senderName: string;
+  receiverName: string;
+  wasteTypeId: string;
+  amount: number;
+  vehicleId: string;
+  status: ShipmentStatus;
+  createdAt: string;
+  
+  docType?: DocType; 
+
+  // İŞ MAKİNASI
+  machineName?: string;
+  workDescription?: string;
+  workHours?: string;
+
+  // SU
+  waterSource?: string;
+  phLevel?: string;
+  chlorineLevel?: string;
+}
 
 export interface Company {
   id: string;
   name: string;
-  role: Role; // Bu firmanın tipi ne? (Sadece sender veya receiver olabilir)
+  role: Role;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  role: Role;
+  companyId: string;
 }
 
 export interface Vehicle {
@@ -18,20 +51,6 @@ export interface Vehicle {
 
 export interface WasteType {
   id: string;
-  name: string;
   code: string;
-}
-
-export interface Shipment {
-  id: string;
-  senderId: string;   // Hangi firma gönderdi?
-  receiverId: string; // Kime gidiyor?
-  senderName: string; // Görüntüleme kolaylığı için (Join yapmamak adına)
-  receiverName: string;
-  wasteTypeId: string;
-  amount: number;
-  vehicleId: string;
-  documentUrl?: string;
-  status: ShipmentStatus;
-  createdAt: string;
+  name: string;
 }

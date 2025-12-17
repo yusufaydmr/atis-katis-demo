@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// YENİ İKON: Droplets eklendi
-import { Trash2, Plus, FileBarChart, Truck, Database, TrendingUp, Scale, AlertTriangle, Droplets } from "lucide-react";
+import { Trash2, Plus, FileBarChart, Truck, Database, TrendingUp, Scale, AlertTriangle, Droplets, Tractor, FileText } from "lucide-react";
 import { Vehicle, WasteType } from "../types";
 
 // Grafik Bileşeni
@@ -31,18 +30,16 @@ export default function AdminPage() {
   }
 
   // --- İSTATİSTİK HESAPLAMALARI ---
-  // 1. Toplam Atık (kg) - Şimdilik tümünü atık varsayıyoruz veya 'Su' olmayanları filtreleyebiliriz
-  const totalWeight = shipments.reduce((acc, curr) => acc + curr.amount, 0);
+  // 1. Toplam Atık (kg) - Sadece WASTE tipindekileri veya tipi olmayanları (eski kayıtlar) topla
+  const totalWeight = shipments.filter(s => s.docType === 'WASTE' || !s.docType).reduce((acc, curr) => acc + curr.amount, 0);
   
-  // 2. Toplam Su (Lt) - Demo olduğu için, içinde "Su" geçen atık tiplerini toplayalım veya mock bir değer gösterelim
-  // Gerçek senaryoda: shipments.filter(s => s.unit === 'LT').reduce(...)
-  const totalWater = shipments.filter(s => {
-      const type = wasteTypes.find(w => w.id === s.wasteTypeId);
-      return type?.name.toLowerCase().includes("su");
-  }).reduce((acc, curr) => acc + curr.amount, 0);
-
+  // 2. Aktif Sevkiyatlar
   const activeShipmentsCount = shipments.filter(s => s.status !== 'DELIVERED').length;
+  
+  // 3. Riskli Atık Sayısı
   const hazardousWasteCount = shipments.filter(s => {
+    // Sadece atıklar için risk kontrolü yapılır
+    if (s.docType && s.docType !== 'WASTE') return false;
     const w = wasteTypes.find(wt => wt.id === s.wasteTypeId);
     return w?.code.startsWith("18") || w?.name.includes("Tehlikeli"); 
   }).length;
@@ -71,6 +68,9 @@ export default function AdminPage() {
     }
   };
 
+  // Helper: Atık Kodu Getir
+  const getWasteCode = (id: string) => wasteTypes.find(w => w.id === id)?.code || "-";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -88,10 +88,8 @@ export default function AdminPage() {
         {/* --- SEKME 1: RAPORLAR --- */}
         <TabsContent value="reports" className="space-y-4">
           
-          {/* ÖZET KARTLARI (4 ADET) */}
+          {/* ÖZET KARTLARI */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            
-            {/* KART 1: TOPLAM ATIK */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Toplam Atık</CardTitle>
@@ -102,20 +100,7 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground">Genel atık hacmi</p>
               </CardContent>
             </Card>
-
-            {/* KART 2: TOPLAM SU (YENİ) */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Toplam Su</CardTitle>
-                <Droplets className="h-4 w-4 text-cyan-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-cyan-700">{totalWater.toLocaleString()} Lt</div>
-                <p className="text-xs text-muted-foreground">Kullanma/İçme suyu</p>
-              </CardContent>
-            </Card>
             
-            {/* KART 3: AKTİF SEVKİYAT */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Aktif Sevkiyat</CardTitle>
@@ -123,11 +108,10 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{activeShipmentsCount}</div>
-                <p className="text-xs text-muted-foreground">Şu an işlemde olan</p>
+                <p className="text-xs text-muted-foreground">Şu an işlemde olan araçlar</p>
               </CardContent>
             </Card>
 
-            {/* KART 4: RİSKLİ ATIK */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Riskli Atık</CardTitle>
@@ -138,38 +122,143 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground">Özel işlem gerektiren</p>
               </CardContent>
             </Card>
+            
+            {/* 4. Kart boş kaldı, dilerseniz buraya 'Toplam Su' ekleyebiliriz */}
+             <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Toplam Sefer</CardTitle>
+                <Truck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{shipments.length}</div>
+                <p className="text-xs text-muted-foreground">Kayıtlı tüm transferler</p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* DETAYLI ANALİZ TABLOLARI & GRAFİKLER */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             
-            {/* 1. GRAFİK: Atık Dağılımı (3 birim) */}
-            <WasteDistributionChart shipments={shipments} wasteTypes={wasteTypes} />
+            {/* 1. GRAFİK: Atık Dağılımı (3 birim yer kaplar) */}
+            <WasteDistributionChart shipments={shipments.filter(s => s.docType === 'WASTE' || !s.docType)} wasteTypes={wasteTypes} />
 
-            {/* 2. TABLO: SON HAREKETLER (4 birim) */}
+            {/* 2. YENİ SEKMELİ TABLO: OPERASYON HAREKETLERİ (4 birim yer kaplar - Grafiğin Yanı) */}
             <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Son Hareketler</CardTitle>
-                <CardDescription>Sistemdeki son 5 işlem</CardDescription>
+              <CardHeader className="pb-2">
+                <CardTitle>Operasyon Hareketleri</CardTitle>
+                <CardDescription>Belge türüne göre son işlemler.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {shipments.slice(0, 5).map((s) => {
-                     const vehicle = vehicles.find(v => v.id === s.vehicleId);
-                     return (
-                       <div key={s.id} className="flex items-center gap-4 border-b pb-3 last:border-0 last:pb-0">
-                         <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">
-                            {s.senderName.substring(0,2).toUpperCase()}
-                         </div>
-                         <div className="flex-1 space-y-1 min-w-0">
-                           <p className="text-sm font-medium leading-none truncate">{s.senderName} ➔ {s.receiverName}</p>
-                           <p className="text-xs text-muted-foreground truncate">{vehicle?.plate} • {s.amount}kg</p>
-                         </div>
-                         <Badge variant="outline" className="text-xs shrink-0">{s.status}</Badge>
-                       </div>
-                     )
-                  })}
-                </div>
+                {/* İÇ TABS */}
+                <Tabs defaultValue="waste" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                        <TabsTrigger value="waste" className="text-xs"><FileText className="w-3 h-3 mr-1"/> Atık</TabsTrigger>
+                        <TabsTrigger value="machine" className="text-xs"><Tractor className="w-3 h-3 mr-1"/> İş Makinası</TabsTrigger>
+                        <TabsTrigger value="water" className="text-xs"><Droplets className="w-3 h-3 mr-1"/> Su Tankeri</TabsTrigger>
+                    </TabsList>
+
+                    {/* ATIK TABLOSU */}
+                    <TabsContent value="waste">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[80px]">Kod</TableHead>
+                                    <TableHead>Gönderen</TableHead>
+                                    <TableHead>Plaka</TableHead>
+                                    <TableHead className="text-right">Miktar</TableHead>
+                                    <TableHead className="text-right">Durum</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {shipments.filter(s => s.docType === 'WASTE' || !s.docType).slice(0, 5).map(s => {
+                                    const v = vehicles.find(veh => veh.id === s.vehicleId);
+                                    return (
+                                        <TableRow key={s.id}>
+                                            <TableCell className="font-mono text-xs">{getWasteCode(s.wasteTypeId)}</TableCell>
+                                            <TableCell className="text-xs font-medium">{s.senderName}</TableCell>
+                                            <TableCell className="text-xs text-muted-foreground">{v?.plate || "-"}</TableCell>
+                                            <TableCell className="text-right text-xs">{s.amount} kg</TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge variant="outline" className="text-[10px] px-1 py-0">{s.status}</Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                                {shipments.filter(s => s.docType === 'WASTE' || !s.docType).length === 0 && (
+                                    <TableRow><TableCell colSpan={5} className="text-center text-xs py-4 text-gray-400">Kayıt yok</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TabsContent>
+
+                    {/* İŞ MAKİNASI TABLOSU */}
+                    <TabsContent value="machine">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Makine</TableHead>
+                                    <TableHead>İş Tanımı</TableHead>
+                                    <TableHead>Plaka</TableHead>
+                                    <TableHead className="text-right">Süre</TableHead>
+                                    <TableHead className="text-right">Durum</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {shipments.filter(s => s.docType === 'MACHINE').map(s => {
+                                    const v = vehicles.find(veh => veh.id === s.vehicleId);
+                                    return (
+                                        <TableRow key={s.id}>
+                                            <TableCell className="font-medium text-xs">{s.machineName}</TableCell>
+                                            <TableCell className="text-xs text-muted-foreground">{s.workDescription}</TableCell>
+                                            <TableCell className="text-xs font-mono">{v?.plate || "-"}</TableCell>
+                                            <TableCell className="text-right text-xs font-bold">{s.workHours}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge variant="outline" className="text-[10px] px-1 py-0">{s.status}</Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                                {shipments.filter(s => s.docType === 'MACHINE').length === 0 && (
+                                    <TableRow><TableCell colSpan={5} className="text-center text-xs py-4 text-gray-400">Kayıt yok</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TabsContent>
+
+                    {/* SU TANKERİ TABLOSU */}
+                    <TabsContent value="water">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Kaynak</TableHead>
+                                    <TableHead>Değerler</TableHead>
+                                    <TableHead>Plaka</TableHead>
+                                    <TableHead className="text-right">Miktar</TableHead>
+                                    <TableHead className="text-right">Durum</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {shipments.filter(s => s.docType === 'WATER').map(s => {
+                                    const v = vehicles.find(veh => veh.id === s.vehicleId);
+                                    return (
+                                        <TableRow key={s.id}>
+                                            <TableCell className="font-medium text-xs">{s.waterSource}</TableCell>
+                                            <TableCell className="text-xs text-muted-foreground">pH:{s.phLevel} / Cl:{s.chlorineLevel}</TableCell>
+                                            <TableCell className="text-xs font-mono">{v?.plate || "-"}</TableCell>
+                                            <TableCell className="text-right text-xs font-bold text-cyan-600">{s.amount} Lt</TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge variant="outline" className="text-[10px] px-1 py-0">{s.status}</Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                                {shipments.filter(s => s.docType === 'WATER').length === 0 && (
+                                    <TableRow><TableCell colSpan={5} className="text-center text-xs py-4 text-gray-400">Kayıt yok</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
 
@@ -190,7 +279,7 @@ export default function AdminPage() {
                   </TableHeader>
                   <TableBody>
                     {companies.filter(c => c.role === 'sender').map(company => {
-                      const companyShipments = shipments.filter(s => s.senderId === company.id);
+                      const companyShipments = shipments.filter(s => s.senderId === company.id && (s.docType === 'WASTE' || !s.docType));
                       const total = companyShipments.reduce((acc, s) => acc + s.amount, 0);
                       return (
                         <TableRow key={company.id}>
